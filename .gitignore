@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.env
+.DS_Store
+db_config.json
+temp_auth/
+console_output.txt
+*.sql

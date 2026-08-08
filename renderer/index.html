@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Store - Sistema de Gestión y Facturación</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================================================================
+       PANTALLA DE INICIO DE SESIÓN (LOGIN)
+       ============================================================================ -->
+  <div id="login-screen" class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo"><i class="fa-solid fa-microchip"></i> Store</div>
+        <div class="login-subtitle">Gestión y Facturación de Soporte Técnico</div>
+      </div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username" class="form-label">Nombre de Usuario</label>
+          <div class="input-container">
+            <input type="text" id="username" class="form-input" placeholder="ej: admin" required autocomplete="username">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password" class="form-label">Contraseña</label>
+          <div class="input-container">
+            <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+        </div>
+        
+        <button type="submit" id="login-btn" class="btn-primary">
+          <span id="login-btn-text">Iniciar Sesión</span>
+        </button>
+      </form>
+
+      <button id="test-conn-btn" class="btn-secondary">
+        <i class="fa-solid fa-database"></i> Probar Conexión SQL Server
+      </button>
+
+      <div id="db-status" class="db-status-badge status-disconnected">
+        <div class="status-dot"></div>
+        <span id="db-status-text">Sin verificar conexión</span>
+      </div>
+
+      <div id="error-message" class="error-message"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================================
+       INTERFAZ PRINCIPAL (DESPUÉS DEL LOGIN)
+       ============================================================================ -->
+  <div id="app-screen" class="app-layout">
+    <!-- Sidebar / Menú Lateral -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo"><i class="fa-solid fa-microchip"></i> Store</div>
+        <div id="user-role-badge" class="role-badge role-staff">Staff</div>
+      </div>
+      
+      <ul class="sidebar-menu">
+        <li class="menu-item active" data-target="dashboard-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-chart-pie"></i> Dashboard
+          </a>
+        </li>
+        <!-- 2. Consultas Clientes -->
+        <li class="menu-item" data-target="queries-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-envelope-open-text"></i> Consultas Clientes
+          </a>
+        </li>
+        
+        <!-- 3. Clientes -->
+        <li class="menu-item" data-target="clients-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-user-group"></i> Clientes
+          </a>
+        </li>
+        
+        <!-- 4. Reparaciones -->
+        <li class="menu-item" data-target="repairs-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-screwdriver-wrench"></i> Reparaciones
+          </a>
+        </li>
+        
+        <!-- Opciones exclusivas de Administrador (se ocultarán dinámicamente si es Staff) -->
+        
+
+        
+        <!-- 6. Servicios -->
+        <li class="menu-item admin-only" data-target="services-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-hand-holding-hand"></i> Servicios
+          </a>
+        </li>
+        
+        <!-- 7. Inventario -->
+        <li class="menu-item admin-only" data-target="inventory-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-box-open"></i> Inventario
+          </a>
+        </li>
+
+        <!-- 8. Facturación -->
+        <li class="menu-item admin-only" data-target="invoices-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-file-invoice-dollar"></i> Facturación
+          </a>
+        </li>
+        
+        <!-- 9. Pedidos -->
+        <li class="menu-item" data-target="orders-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-bag-shopping"></i> Pedidos
+          </a>
+        </li>
+        
+        <!-- 10. Reportes Financieros -->
+        <li class="menu-item admin-only" data-target="reports-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-chart-line"></i> Reportes Financieros
+          </a>
+        </li>
+        
+        <!-- 11. Importar -->
+        <li class="menu-item admin-only" data-target="import-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-file-import"></i> Importar
+          </a>
+        </li>
+        
+        <!-- 12. Usuarios -->
+        <li class="menu-item admin-only" data-target="users-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-users-gear"></i> Usuarios
+          </a>
+        </li>
+        
+        <!-- 5. Técnicos -->
+        <li class="menu-item admin-only" data-target="techs-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-user-tie"></i> Técnicos
+          </a>
+        </li>
+        
+        <!-- 13. Configuración -->
+        <li class="menu-item admin-only" data-target="settings-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-gears"></i> Configuración
+          </a>
+        </li>
+        
+        <!-- 14. Ayuda -->
+        <li class="menu-item" data-target="help-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-circle-question"></i> Ayuda
+          </a>
+        </li>
+      </ul>
+      
+      <!-- Información del Usuario Firmado -->
+      <div class="user-profile">
+        <div class="user-info">
+          <span id="profile-name" class="user-name">Nombre Apellido</span>
+          <span id="profile-email" class="user-email">usuario@correo.com</span>
+        </div>
+        <button id="logout-btn" class="logout-btn" title="Cerrar Sesión">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Área de Contenido -->
+    <main class="main-content">
+      <!-- Barra Superior -->
+      <header class="top-bar">
+        <h1 id="page-title" class="page-title">Dashboard</h1>
+        <div class="system-status-indicator">
+          SQL Server Conectado
+        </div>
+      </header>
+      
+      <!-- Contenedor de Vistas -->
+      <div class="content-viewport">
+        
+        <!-- VISTA: DASHBOARD -->
+        <div id="dashboard-view" class="view-panel active">
+          <!-- Banner de Bienvenida -->
+          <div id="welcome-banner" class="content-card" style="min-height: auto; margin-bottom: 25px; padding: 25px; background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(16,185,129,0.03) 100%), var(--bg-secondary); border-left: 5px solid var(--primary); position: relative; overflow: hidden;">
+            <h2 id="welcome-title" style="font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">¡Cargando...!</h2>
+            <p id="welcome-text" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; max-width: 800px;">Conectando al sistema y descargando parámetros de configuración...</p>
+          </div>
+          
+          <!-- Tarjetas de Estadísticas -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-title">Reparaciones Activas</span>
+              <span id="stat-active-repairs" class="stat-value">0</span>
+              <span class="stat-desc">En proceso en el taller</span>
+            </div>
+            
+            <div class="stat-card stat-warning">
+              <span class="stat-title">Alertas de Stock</span>
+              <span id="stat-low-stock" class="stat-value">0</span>
+              <span class="stat-desc">Repuestos por debajo del mínimo</span>
+            </div>
+
+            <!-- Caja Diaria (Solo Administradores verán valores reales, Staff verá 'Acceso Restringido' o similar si lo definimos) -->
+            <div class="stat-card stat-success admin-only-card">
+              <span class="stat-title">Recaudado Hoy</span>
+              <span id="stat-earnings" class="stat-value">$0 USD</span>
+              <span class="stat-desc">Ventas y facturaciones del día</span>
+            </div>
+          </div>
+
+          <!-- Gráficos de Ventas -->
+          <div class="content-card" style="margin-bottom: 20px;">
+            <div class="card-header-main" style="border-bottom: none; margin-bottom: 10px; padding-bottom: 0;">
+              <span class="card-title-main"><i class="fa-solid fa-chart-line"></i> Análisis de Ventas</span>
+              <div id="chart-tabs" style="display: flex; gap: 8px; background: rgba(255,255,255,0.03); padding: 4px; border-radius: 8px; border: 1px solid var(--card-border);">
+                <button class="chart-tab active" data-period="week" style="padding: 6px 14px; border-radius: 6px; border: none; background: var(--primary); color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">Semanal</button>
+                <button class="chart-tab" data-period="month" style="padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">30 Días</button>
+                <button class="chart-tab" data-period="year" style="padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">Anual</button>
+              </div>
+            </div>
+            <div style="position: relative; height: 300px; width: 100%;">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
+
+          <div class="dashboard-details">
+            <!-- Tabla / Resumen de Equipos Pendientes -->
+            <div class="content-card">
+              <div class="card-header-main">
+                <span class="card-title-main">Equipos en Diagnóstico / Reparación Urgente</span>
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div id="urgent-repairs-list" class="table-placeholder" style="display: flex; flex-direction: column; gap: 10px; align-items: stretch; text-align: left; padding: 10px; overflow-y: auto; max-height: 250px;">
+                <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0.5; padding: 20px;">
+                  <i class="fa-solid fa-list-check" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                  <p>Cargando equipos en diagnóstico...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resumen Rápido de Movimientos -->
+            <div class="content-card">
+              <div class="card-header-main">
+                <span class="card-title-main">Operaciones Recientes</span>
+                <i class="fa-solid fa-receipt"></i>
+              </div>
+              <div id="recent-operations-list" class="table-placeholder" style="display: flex; flex-direction: column; gap: 10px; align-items: stretch; text-align: left; padding: 10px;">
+                <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 0.5; padding: 20px;">
+                  <i class="fa-solid fa-history" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                  <p>Cargando operaciones recientes...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: REPARACIONES -->
+        <div id="repairs-view" class="view-panel">
+          <div class="content-card">
+            <div class="card-header-main">
+              <span class="card-title-main"><i class="fa-solid fa-screwdriver-wrench"></i> Órdenes de Reparación</span>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="filter-repair-status" class="form-input" style="width: 175px; padding: 8px 12px; font-size: 0.85rem; background: var(--bg-primary);">
+                  <option value="">Todos los Estados</option>
+                  <option value="Recibido">Recibido</option>
+                  <option value="En Diagnostico">En Diagnóstico</option>
+                  <option value="Presupuestado">Presupuestado</option>
+                  <option value="En Reparacion">En Reparación</option>
+                  <option value="Listo para Entrega">Listo para Entrega</option>
+                  <option value="Entregado">Entregado</option>
+                  <option value="Devuelto sin Reparar">Devuelto sin Reparar</option>
+                </select>
+                <input type="text" id="search-repairs" class="form-input" placeholder="Buscar órdenes..." style="width: 250px;">
+                <button id="add-repair-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                  <i class="fa-solid fa-plus"></i> Nueva Órden
+                </button>
+              </div>
+            </div>
+            <!-- BARRA DE DESPLAZAMIENTO SUPERIOR -->
+            <div id="repairs-top-scroll" style="overflow-x: auto; width: 100%; margin-top: 15px; margin-bottom: -15px; position: relative; z-index: 10;">
+              <div id="repairs-top-scroll-content" style="height: 1px;"></div>
+            </div>
+            <div id="repairs-table-wrapper" style="overflow-x: auto; margin-top: 15px;">
+              <table class="data-table" id="repairs-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Dispositivo</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>N° Serie</th>
+                    <th>Costo</th>
+                    <th>Abono</th>
+                    <th>Estado</th>
+                    <th style="text-align: right; width: 120px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="repairs-list-tbody">
+                  <!-- Carga dinámica -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: INVENTARIO -->
+        <div id="inventory-view" class="view-panel">
+          <div class="content-card" style="background: transparent; border: none; padding: 0; box-shadow: none;">
+            
+            <!-- Cabecera de Productos -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <span id="inventory-count-text" style="color: var(--text-muted); font-size: 0.95rem;">0 productos · página 1 de 1</span>
+              <div style="display: flex; gap: 10px;">
+                <button id="export-excel-btn" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; border-radius: 8px; padding: 8px 16px; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                  <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                </button>
+                <button id="delete-data-btn" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 8px; padding: 8px 16px; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                  <i class="fa-solid fa-trash-can"></i> Borrar Datos
+                </button>
+                <button id="add-inventory-btn" class="btn-primary" style="background-color: #0ea5e9; border: none; padding: 8px 16px; font-size: 0.9rem;">
+                  <i class="fa-solid fa-plus"></i> Nuevo Producto
+                </button>
+              </div>
+            </div>
+            
+            <!-- Barra de Búsqueda -->
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 15px;">
+              <div style="position: relative; width: 100%;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" id="search-inventory" class="form-input" placeholder="Buscar por Producto, Codprod o Idventa..." style="width: 100%; padding: 12px 15px 12px 40px; background: transparent; border: none; outline: none; box-shadow: none; font-size: 0.95rem;">
+              </div>
+            </div>
+
+            <!-- Paginador UI -->
+            <div id="inventory-pagination-container" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 0; margin-bottom: 10px;">
+              <div id="inventory-pagination-info" style="color: var(--text-muted); font-size: 0.95rem;">
+                Mostrando 0–0 de 0 productos
+              </div>
+              <div id="inventory-pagination-controls" style="display: flex; gap: 8px;">
+                <!-- Se llenará dinámicamente desde app.js -->
+              </div>
+            </div>
+
+            <!-- Barra deslizante visual (Progress Bar) -->
+            <div id="inventory-scroll-track" style="width: 100%; height: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 2px; margin-bottom: 20px; position: relative; overflow: hidden; cursor: pointer;">
+              <div id="inventory-progress-bar" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #3b82f6; border-radius: 2px; cursor: grab;"></div>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="content-card" style="padding: 0; overflow: hidden; border-radius: 10px; border: 1px solid var(--card-border);">
+              <div id="inventory-table-container" style="overflow-x: auto;">
+                <table class="data-table" id="inventory-table" style="margin: 0; border-radius: 0;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--card-border); background: transparent;">
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Item</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Idventa</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Codprod</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Producto</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Categ</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Precio Venta</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem; text-align: center;">Stock</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem; text-align: right;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventory-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+
+        <!-- VISTA: PEDIDOS (Historial de Pedidos) -->
+        <div id="orders-view" class="view-panel">
+          <div class="content-card" style="background: transparent; border: none; padding: 0; box-shadow: none;">
+            
+            <!-- Título y Subtítulo -->
+            <div style="margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #fff;">Historial de Pedidos</h2>
+              <span id="orders-count-text" style="color: var(--text-muted); font-size: 0.95rem;">0 pedidos en total</span>
+            </div>
+
+            <!-- Controles Superiores -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+              <select id="orders-month-filter" class="form-input" style="width: auto; background-color: #1a1e27; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; color: #fff;">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+              <select id="orders-year-filter" class="form-input" style="width: auto; background-color: #1a1e27; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; color: #fff;">
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+              </select>
+              <button id="orders-export-btn" class="btn-primary" style="background-color: #10b981; border: none; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; font-weight: 600;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+              </button>
+              <button id="orders-delete-delivered-btn" class="btn-primary" style="background-color: #dc2626; border: none; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; font-weight: 600;">
+                <i class="fa-solid fa-trash-can"></i> Borrar Entregados
+              </button>
+            </div>
+
+            <!-- Buscador -->
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; margin-bottom: 15px;">
+              <div style="position: relative; width: 100%;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" id="search-orders" class="form-input" placeholder="Buscar por cliente, # pedido o producto..." style="width: 100%; padding: 12px 15px 12px 40px; background: transparent; border: none; outline: none; box-shadow: none; font-size: 0.95rem; color: #fff;">
+              </div>
+            </div>
+
+            <!-- Píldoras / Tabs de Estado -->
+            <div id="orders-status-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+              <button class="order-tab active" data-status="Todos" style="padding: 6px 14px; border-radius: 6px; border: none; background: #3b82f6; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Todos (0)</button>
+              <button class="order-tab" data-status="Pendiente" style="padding: 6px 14px; border-radius: 6px; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer;">Pendiente (0)</button>
+              <button class="order-tab" data-status="Confirmado" style="padding: 6px 14px; border-radius: 6px; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer;">Confirmado (0)</button>
+              <button class="order-tab" data-status="Enviado" style="padding: 6px 14px; border-radius: 6px; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer;">Enviado (0)</button>
+              <button class="order-tab" data-status="Despachado" style="padding: 6px 14px; border-radius: 6px; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer;">Despachado (0)</button>
+              <button class="order-tab" data-status="Entregado" style="padding: 6px 14px; border-radius: 6px; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.85rem; font-weight: 600; cursor: pointer;">Entregado (0)</button>
+            </div>
+
+            <!-- Empty State -->
+            <div id="orders-empty-state" class="content-card" style="padding: 60px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: 12px; text-align: center;">
+              <i class="fa-solid fa-bag-shopping" style="font-size: 3rem; color: rgba(255,255,255,0.2); margin-bottom: 20px;"></i>
+              <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.2rem; font-weight: 600;">No se encontraron pedidos</h3>
+              <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem;">Aún no hay pedidos registrados</p>
+            </div>
+
+            <!-- Tabla de Datos (Oculta por defecto si está vacía) -->
+            <div id="orders-table-container" class="content-card" style="padding: 0; overflow: hidden; border-radius: 10px; border: 1px solid var(--card-border); display: none;">
+              <div style="overflow-x: auto;">
+                <table class="data-table" id="orders-table" style="margin: 0; border-radius: 0;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--card-border); background: transparent;">
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Pedido</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Cliente</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Fecha</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem;">Estado</th>
+                      <th style="padding: 14px 16px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; font-size: 0.85rem; text-align: right;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="orders-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- VISTA: IMPORTAR -->
+        <div id="import-view" class="view-panel">
+          <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+            
+            <!-- Encabezado -->
+            <div class="content-card" style="min-height: auto; padding: 24px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg);">
+              <h2 style="margin: 0 0 8px 0; font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-file-import" style="color: #3b82f6;"></i> Importar desde Excel
+              </h2>
+              <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
+                Carga productos o pedidos desde un archivo .xlsx de tu sistema anterior. Descarga primero la plantilla para conocer el formato requerido.
+              </p>
+            </div>
+
+            <!-- Descargar plantillas -->
+            <div class="content-card" style="min-height: auto; padding: 24px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg);">
+              <h3 style="margin: 0 0 16px 0; font-size: 0.95rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-download" style="color: #3b82f6;"></i> Plantillas de ejemplo
+              </h3>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button id="btn-template-products" style="display: flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  <i class="fa-solid fa-file-excel"></i> Plantilla Productos
+                </button>
+                <button id="btn-template-orders" style="display: flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                  <i class="fa-solid fa-file-excel"></i> Plantilla Pedidos
+                </button>
+              </div>
+            </div>
+
+            <!-- Subir archivo -->
+            <div class="content-card" style="min-height: auto; padding: 24px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg); display: flex; flex-direction: column; gap: 16px;">
+              <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-upload" style="color: #3b82f6;"></i> Subir archivo Excel
+              </h3>
+
+              <div>
+                <label style="display: block; font-size: 0.9rem; font-weight: 500; color: #fff; margin-bottom: 8px;">¿Qué deseas importar?</label>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;" id="import-type-buttons">
+                  <button class="import-type-btn active" data-type="products" style="padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid #3b82f6; background: #3b82f6; color: #fff; cursor: pointer; transition: all 0.2s;">Solo Productos</button>
+                  <button class="import-type-btn" data-type="orders" style="padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid var(--card-border); background: rgba(255,255,255,0.05); color: var(--text-muted); cursor: pointer; transition: all 0.2s;">Solo Pedidos</button>
+                  <button class="import-type-btn" data-type="both" style="padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; border: 1px solid var(--card-border); background: rgba(255,255,255,0.05); color: var(--text-muted); cursor: pointer; transition: all 0.2s;">Productos y Pedidos</button>
+                </div>
+              </div>
+
+              <div id="import-dropzone" style="border: 2px dashed var(--card-border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.01);">
+                <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv,.ods" style="display: none;">
+                
+                <div id="import-empty-state">
+                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px;"></i>
+                  <p style="margin: 0; font-size: 0.9rem; font-weight: 500; color: #fff;">Arrastra tu archivo aquí o haz clic para seleccionar</p>
+                  <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Formatos aceptados: .xlsx, .xls, .csv, .ods</p>
+                </div>
+
+                <div id="import-file-selected" style="display: none; align-items: center; justify-content: center; gap: 12px;">
+                  <i class="fa-solid fa-file-excel" style="font-size: 2rem; color: #3b82f6;"></i>
+                  <div style="text-align: left;">
+                    <p id="import-filename" style="margin: 0; font-size: 0.9rem; font-weight: 500; color: #fff;">archivo.xlsx</p>
+                    <p id="import-filesize" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">15.2 KB</p>
+                  </div>
+                  <button id="import-clear-file" style="margin-left: 12px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+
+              <!-- Vista previa -->
+              <div id="import-preview-container" style="display: none;">
+                <p style="margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 500; color: #fff; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-circle-check" style="color: #22c55e;"></i> Vista previa
+                </p>
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid var(--card-border);">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
+                    <thead id="import-preview-head" style="background: rgba(255,255,255,0.05);"></thead>
+                    <tbody id="import-preview-body"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Botones Acción -->
+              <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <button id="import-submit-btn" class="btn-primary" disabled style="background: #3b82f6; border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; opacity: 0.5; cursor: not-allowed; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-upload"></i> Importar Datos
+                </button>
+                <button id="import-cancel-btn" style="background: transparent; color: #fff; border: 1px solid var(--card-border); padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: none;">Limpiar</button>
+              </div>
+            </div>
+
+            <!-- Historial Reciente de Importaciones -->
+            <div class="content-card" style="padding: 0; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg); overflow: hidden;">
+              <div style="padding: 20px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-clock-rotate-left" style="color: var(--text-muted);"></i> Historial de Importaciones
+                </h3>
+              </div>
+              <div style="overflow-x: auto;">
+                <table class="data-table" style="margin: 0; border-radius: 0; width: 100%;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--card-border); background: transparent;">
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: left;">Fecha</th>
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: left;">Archivo</th>
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: left;">Tipo</th>
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: center;">Registros</th>
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: right;">Estado</th>
+                      <th style="padding: 14px 24px; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-align: center; width: 50px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="import-history-tbody">
+                    <tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">Cargando historial...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Notas Importantes -->
+            <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 12px; padding: 16px;">
+              <div style="display: flex; gap: 12px;">
+                <i class="fa-solid fa-circle-exclamation" style="color: #eab308; font-size: 1.2rem; margin-top: 2px;"></i>
+                <div style="font-size: 0.9rem;">
+                  <p style="margin: 0 0 4px 0; font-weight: 600; color: #facc15;">Notas importantes</p>
+                  <ul style="margin: 0; padding-left: 20px; color: var(--text-muted); line-height: 1.5;">
+                    <li>Los productos se importan desde la hoja llamada <strong style="color: #fff;">"Productos"</strong> o la primera hoja del archivo.</li>
+                    <li>Los pedidos se importan desde la hoja llamada <strong style="color: #fff;">"Pedidos"</strong>.</li>
+                    <li>Los estados válidos para pedidos son: <strong style="color: #fff;">Pendiente, Confirmado, Enviado, Despachado, Entregado</strong>.</li>
+                    <li>Descarga la plantilla para ver el formato exacto de columnas requerido.</li>
+                    <li>La importación no elimina datos existentes, solo agrega o actualiza nuevos registros.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- VISTA: FACTURACIÓN -->
+        <div id="invoices-view" class="view-panel">
+          <div class="content-card">
+            <div class="card-header-main">
+              <span class="card-title-main"><i class="fa-solid fa-calculator"></i> Facturación y Caja</span>
+              <button id="add-invoice-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                <i class="fa-solid fa-cart-shopping"></i> Nueva Factura / Venta
+              </button>
+            </div>
+            <div style="overflow-x: auto; margin-top: 15px;">
+              <table class="data-table" id="invoices-table">
+                <thead>
+                  <tr>
+                    <th>N° Factura</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Método Pago</th>
+                    <th>Total</th>
+                    <th>Clave de Acceso SRI</th>
+                    <th style="text-align: right; width: 150px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-list-tbody">
+                  <!-- Carga dinámica -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: REPORTES FINANCIEROS (ADMIN ONLY) -->
+        <div id="reports-view" class="view-panel">
+          <div class="admin-view-container">
+            <div class="content-card" style="margin-bottom: 20px;">
+              <div class="card-header-main">
+                <span class="card-title-main"><i class="fa-solid fa-chart-line"></i> Reporte de Ventas e Ingresos</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <input type="date" id="report-start-date" class="form-input" style="width: 150px;">
+                  <span style="color: var(--text-muted);">a</span>
+                  <input type="date" id="report-end-date" class="form-input" style="width: 150px;">
+                  <button id="filter-report-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                    Filtrar
+                  </button>
+                  <button id="export-report-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem; background: #10b981; border: none;" title="Exportar a Excel (CSV)">
+                    <i class="fa-solid fa-file-excel"></i>
+                  </button>
+                  <button id="clear-report-btn" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;" title="Limpiar Pantalla">
+                    <i class="fa-solid fa-broom"></i>
+                  </button>
+                  <button id="delete-report-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem; background: var(--danger); border: none;" title="Borrar Registros">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Tarjetas de resumen en reportes -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                <div class="stat-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Ingresos Totales en Rango</span>
+                  <span id="report-total-revenue" style="font-size: 1.5rem; font-weight: 700; color: var(--success);">$0 USD</span>
+                </div>
+                <div style="grid-column: span 2;"></div>
+              </div>
+
+              <div style="overflow-x: auto; margin-top: 15px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Factura</th>
+                      <th>Fecha</th>
+                      <th>Método de Pago</th>
+                      <th>Total Recaudado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reports-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <div class="staff-denied-container" style="display: none;">
+            <div class="restricted-view">
+              <i class="fa-solid fa-triangle-exclamation restricted-icon"></i>
+              <h2 class="restricted-title">Acceso Denegado</h2>
+              <p class="restricted-desc">Esta sección está reservada exclusivamente para usuarios con rol de <strong>Administrador</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: CONFIGURACIÓN (ADMIN ONLY) -->
+        <div id="settings-view" class="view-panel">
+          <div class="admin-view-container">
+            <form id="settings-form">
+              <div class="content-card" style="min-height: auto; margin-bottom: 20px;">
+                <div class="card-header-main">
+                  <span class="card-title-main"><i class="fa-solid fa-building"></i> Identidad del Negocio</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 0;">
+                  <div class="form-group">
+                    <label for="set-empresa-nombre" class="form-label">Nombre Completo del Negocio</label>
+                    <input type="text" id="set-empresa-nombre" class="form-input" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-empresa-nombre-corto" class="form-label">Nombre Corto</label>
+                    <input type="text" id="set-empresa-nombre-corto" class="form-input" required>
+                  </div>
+                  <div class="form-group" style="grid-column: span 2;">
+                    <label for="set-contenido-bienvenida" class="form-label">Mensaje de Bienvenida en Dashboard</label>
+                    <textarea id="set-contenido-bienvenida" class="form-input" rows="3" required style="resize: vertical; font-family: inherit;"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="content-card" style="min-height: auto; margin-bottom: 20px;">
+                <div class="card-header-main">
+                  <span class="card-title-main"><i class="fa-solid fa-images"></i> Diseño e Imagen Corporativa</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 0;">
+                  <div class="form-group">
+                    <label for="set-empresa-logo" class="form-label">URL del Logotipo</label>
+                    <input type="url" id="set-empresa-logo" class="form-input" required placeholder="https://ejemplo.com/logo.png">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-empresa-banner" class="form-label">URL del Banner Promocional</label>
+                    <input type="url" id="set-empresa-banner" class="form-input" required placeholder="https://ejemplo.com/banner.png">
+                  </div>
+                </div>
+              </div>
+
+              <div class="content-card" style="min-height: auto; margin-bottom: 20px;">
+                <div class="card-header-main">
+                  <span class="card-title-main"><i class="fa-solid fa-address-book"></i> Datos de Contacto y Tributarios</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 10px 0;">
+                  <div class="form-group">
+                    <label for="set-empresa-nit" class="form-label">Registro Único de Contribuyentes (RUC)</label>
+                    <input type="text" id="set-empresa-nit" class="form-input" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-empresa-telefono" class="form-label">Teléfono de Soporte / Whatsapp</label>
+                    <input type="text" id="set-empresa-telefono" class="form-input" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-empresa-correo" class="form-label">Correo Electrónico Oficial</label>
+                    <input type="email" id="set-empresa-correo" class="form-input" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-empresa-direccion" class="form-label">Dirección Física Principal</label>
+                    <input type="text" id="set-empresa-direccion" class="form-input" required>
+                  </div>
+                </div>
+              </div>
+
+              <div class="content-card" style="min-height: auto; margin-bottom: 20px;">
+                <div class="card-header-main">
+                  <span class="card-title-main"><i class="fa-solid fa-coins"></i> Configuración Financiera y de Impuestos</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; padding: 10px 0;">
+                  <div class="form-group">
+                    <label for="set-moneda-simbolo" class="form-label">Símbolo de Moneda</label>
+                    <input type="text" id="set-moneda-simbolo" class="form-input" required placeholder="$">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-moneda-codigo" class="form-label">Código de Divisa (ISO)</label>
+                    <input type="text" id="set-moneda-codigo" class="form-input" required placeholder="USD">
+                  </div>
+                  <div class="form-group">
+                    <label for="set-impuesto-iva" class="form-label">Porcentaje de Impuesto / IVA (%)</label>
+                    <input type="number" id="set-impuesto-iva" class="form-input" required min="0" max="100" placeholder="15">
+                  </div>
+                </div>
+              </div>
+              <div class="content-card" style="min-height: auto; margin-bottom: 20px;">
+                <div class="card-header-main">
+                  <span class="card-title-main"><i class="fa-solid fa-comments"></i> Integración de Canales de Mensajería (Telegram, Gmail y WhatsApp)</span>
+                </div>
+                
+                <!-- Telegram Sub-card -->
+                <div style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 15px;">
+                  <h4 style="font-size: 0.95rem; margin-bottom: 10px; color: #38bdf8;"><i class="fa-brands fa-telegram"></i> Configuración de Telegram Bot</h4>
+                  <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 15px; align-items: end;">
+                    <div class="form-group">
+                      <label for="set-telegram-bot-token" class="form-label">Telegram Bot Token</label>
+                      <input type="password" id="set-telegram-bot-token" class="form-input" placeholder="ej: 123456789:ABCdefGHIjklMNOpqrs">
+                    </div>
+                    <div class="form-group">
+                      <label for="set-telegram-chat-id" class="form-label">Telegram Chat ID / Notificaciones</label>
+                      <input type="text" id="set-telegram-chat-id" class="form-input" placeholder="ej: 987654321">
+                    </div>
+                    <button type="button" id="test-telegram-btn" class="btn-secondary" style="margin-top: 0; padding: 10px 15px; font-size: 0.82rem;">
+                      <i class="fa-brands fa-telegram"></i> Probar Telegram
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Gmail Sub-card -->
+                <div style="border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 15px;">
+                  <h4 style="font-size: 0.95rem; margin-bottom: 10px; color: #f87171;"><i class="fa-solid fa-envelope"></i> Configuración de Gmail (SMTP)</h4>
+                  <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 15px; align-items: end;">
+                    <div class="form-group">
+                      <label for="set-gmail-user" class="form-label">Correo Gmail Corporativo</label>
+                      <input type="email" id="set-gmail-user" class="form-input" placeholder="ej: soporte.empresa@gmail.com">
+                    </div>
+                    <div class="form-group">
+                      <label for="set-gmail-app-password" class="form-label">Contraseña de Aplicación de Google</label>
+                      <input type="password" id="set-gmail-app-password" class="form-input" placeholder="•••• •••• •••• ••••">
+                    </div>
+                    <button type="button" id="test-gmail-btn" class="btn-secondary" style="margin-top: 0; padding: 10px 15px; font-size: 0.82rem;">
+                      <i class="fa-solid fa-paper-plane"></i> Probar Gmail
+                    </button>
+                  </div>
+                </div>
+
+
+              </div>
+
+              <div style="display: flex; gap: 15px; margin-top: 20px; margin-bottom: 30px;">
+                <button type="submit" id="save-settings-btn" class="btn-primary" style="width: auto; padding: 12px 30px;">
+                  <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración
+                </button>
+                <button type="button" id="reset-settings-btn" class="btn-secondary" style="width: auto; padding: 12px 30px; margin-top: 0;">
+                  <i class="fa-solid fa-rotate"></i> Descartar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          <div class="staff-denied-container" style="display: none;">
+            <div class="restricted-view">
+              <i class="fa-solid fa-triangle-exclamation restricted-icon"></i>
+              <h2 class="restricted-title">Acceso Denegado</h2>
+              <p class="restricted-desc">Esta sección está reservada exclusivamente para usuarios con rol de <strong>Administrador</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: AYUDA (MANUAL DE USUARIO) -->
+        <div id="help-view" class="view-panel">
+          <div class="content-card">
+            <div class="card-header-main">
+              <span class="card-title-main"><i class="fa-solid fa-book"></i> Manual de Usuario Completo</span>
+            </div>
+            <div style="padding: 20px; line-height: 1.6; color: var(--text-main); max-height: 75vh; overflow-y: auto;">
+              <h2 style="color: var(--primary); margin-bottom: 15px;">Bienvenido al Manual de Usuario</h2>
+              <p style="margin-bottom: 20px; font-size: 1.05rem;">Este sistema integral de gestión y facturación está diseñado para automatizar y controlar todos los aspectos de su negocio de soporte técnico, abarcando desde la primera consulta del cliente hasta la facturación final, manteniendo un control exhaustivo del inventario y las finanzas. A continuación, todo lo que puede hacer con el sistema:</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">1. Dashboard (Panel Principal Inteligente)</h3>
+              <p>Muestra el pulso de su negocio en tiempo real. Cuenta con gráficas financieras automáticas (semanal, mensual, anual), alertas de stock bajo, medidores de ganancias del día, y paneles dinámicos que le informan al instante de equipos en diagnóstico o reparaciones urgentes, así como un historial inmediato de sus últimas facturas emitidas.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">2. Consultas Clientes (Mensajería Omnicanal)</h3>
+              <p>El corazón de la comunicación. Conecte su WhatsApp, correo electrónico (Gmail) y bot de Telegram para recibir mensajes de sus clientes en una sola bandeja unificada. Cuando un cliente escribe, recibirá alertas visuales y de voz. Podrá responder a cualquier red social directamente desde el sistema, enviar imágenes y manejar el soporte remoto sin sacar su teléfono.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">3. Gestión de Clientes</h3>
+              <p>Directorio centralizado. Gestione datos de facturación (RUC/Cédula), contactos y redes. Todo el historial de equipos que traiga un cliente, sus compras y sus mensajes quedarán vinculados a su perfil de por vida para un trato personalizado.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">4. Control de Reparaciones</h3>
+              <p>Centro de mando técnico. Registre cada dispositivo que ingresa, asigne un técnico, detalle el problema y adjunte la contraseña del equipo. Puede actualizar el estado (Recibido, En Diagnóstico, En Reparación, Reparado, Entregado). Al terminar, puede convertir la orden de reparación en una factura con un solo clic.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">5. Gestión de Técnicos</h3>
+              <p>Controle a su personal especializado. Registre a los técnicos del taller, asigne números de contacto e identifíquelos para medir la productividad o saber quién intervino en qué reparación a lo largo del tiempo.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">6. Catálogo de Servicios</h3>
+              <p>Mano de obra estandarizada. Configure servicios predefinidos (ej. "Instalación de Sistema Operativo", "Cambio de Pantalla", "Limpieza de Hardware") con precios fijos. Esto agiliza la facturación al no tener que teclear los precios de mano de obra en cada orden.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">7. Inventario y Control de Stock</h3>
+              <p>El núcleo de sus productos y repuestos físicos. Gestione compras, precios de venta, costos y compatibilidad con marcas. El sistema restará stock automáticamente cuando realice una factura y le emitirá alertas tempranas si un producto se está agotando. Cuenta con búsqueda inteligente por código de barras, nombre o ID.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">8. Facturación y Ventas (POS)</h3>
+              <p>Punto de Venta profesional. Añada productos, repuestos y servicios al carrito. Genere facturas que incluyen cálculos automáticos de IVA y descuentos. Las facturas son válidas para auditorías con estructura secuencial, restan stock inmediatamente y pueden ser exportadas a PDF o enviadas directamente por correo electrónico al cliente.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">9. Pedidos (Historial)</h3>
+              <p>Mantenga un registro contable de todo lo que ha vendido. Utilice filtros inteligentes automáticos por mes y año para revisar pedidos y facturas antiguas, consultar estados de pago, o volver a imprimir comprobantes entregados a lo largo de toda la vida útil de su negocio.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">10. Reportes Financieros (Contabilidad)</h3>
+              <p>Motor analítico de ingresos. Seleccione rangos de fechas personalizados para que el sistema audite todas las facturas cobradas. Analizará sus flujos de caja y exportará la información crítica para que pueda tomar decisiones gerenciales acertadas o presentar sus declaraciones.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">11. Importador Inteligente (Excel)</h3>
+              <p>Herramienta masiva para facilitar migraciones de datos. Si tiene un inventario enorme en Excel, súbalo al sistema. Cuenta con lógica inteligente: si el sistema detecta que un producto nuevo ya existe en su base de datos, no lo duplica, sino que suma la cantidad al stock actual y actualiza el precio automáticamente, ahorrándole horas de trabajo manual.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">12. Gestión de Usuarios y Permisos</h3>
+              <p>Módulo de seguridad exclusivo para Administradores. Cree credenciales para sus empleados. Restrinja áreas sensibles para que el "Staff" general pueda operar el inventario o la mensajería sin tener acceso a configuraciones, reportes financieros, o borrado de datos críticos.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">13. Configuración del Sistema</h3>
+              <p>Panel de personalización general. Defina la identidad de su empresa (NIT/RUC, nombre comercial, correo base), asigne las llaves API de sus bots de WhatsApp y Telegram, y ajuste impuestos (IVA) o preferencias para que la aplicación trabaje exactamente a su medida.</p>
+
+              <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid var(--card-border); padding-bottom: 5px;">14. Guía de Conexión de Mensajería</h3>
+              <p>El sistema permite centralizar mensajes de WhatsApp, Gmail y Telegram en el módulo de Consultas. A continuación, los pasos para conectarlos en la pestaña de <b>Configuración</b>:</p>
+              
+              <h4 style="color: var(--text-main); margin-top: 15px;">📱 Conectar WhatsApp</h4>
+              <ul style="margin-left: 20px; margin-bottom: 15px; line-height: 1.8;">
+                <li>WhatsApp se conecta mediante Código QR, de forma idéntica a WhatsApp Web.</li>
+                <li>Al iniciar el sistema por primera vez, se generará y mostrará un Código QR en la interfaz o consola del sistema.</li>
+                <li>Abre WhatsApp en tu teléfono, ve a "Dispositivos Vinculados" y escanea el código.</li>
+                <li>Una vez escaneado, la aplicación se sincronizará y podrá enviar y recibir mensajes automáticamente.</li>
+              </ul>
+
+              <h4 style="color: var(--text-main); margin-top: 15px;">📧 Conectar Gmail</h4>
+              <ul style="margin-left: 20px; margin-bottom: 15px; line-height: 1.8;">
+                <li>Por motivos de seguridad, Google ya no permite conectar aplicaciones externas utilizando tu contraseña normal de correo.</li>
+                <li>Debes ir a la configuración de tu Cuenta de Google ➔ <b>Seguridad</b> y activar la <b>Verificación en 2 pasos</b>.</li>
+                <li>Luego busca la opción <b>Contraseñas de aplicación</b> y genera una nueva (Google te dará un código de 16 letras).</li>
+                <li>En el sistema de Gestión, ve a Configuración, ingresa tu correo en <i>Usuario Gmail</i> y pega las 16 letras en <i>Contraseña de Aplicación</i>.</li>
+              </ul>
+
+              <h4 style="color: var(--text-main); margin-top: 15px;">🤖 Conectar Telegram</h4>
+              <ul style="margin-left: 20px; margin-bottom: 15px; line-height: 1.8;">
+                <li>Abre la aplicación de Telegram y busca al bot oficial <b>@BotFather</b>.</li>
+                <li>Inicia un chat y escribe el comando <code>/newbot</code> para crear tu propio Bot de soporte.</li>
+                <li>BotFather te proporcionará un <b>API Token</b> (una cadena larga de números y letras que comienza con un número).</li>
+                <li>Opcional: Busca el bot <b>@userinfobot</b> para obtener tu Chat ID numérico si deseas recibir alertas de nuevos mensajes de forma directa.</li>
+                <li>En el sistema de Gestión, ve a Configuración y pega el <i>Token de Bot</i> y el <i>Chat ID</i> en los campos de Telegram correspondientes.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: CLIENTES -->
+        <div id="clients-view" class="view-panel">
+          <div class="content-card">
+            <div class="card-header-main">
+              <span class="card-title-main"><i class="fa-solid fa-user-group"></i> Directorio de Clientes</span>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="search-clients" class="form-input" placeholder="Buscar clientes..." style="width: 250px;">
+                <button id="add-client-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                  <i class="fa-solid fa-user-plus"></i> Registrar Cliente
+                </button>
+              </div>
+            </div>
+            <div style="overflow-x: auto; margin-top: 15px;">
+              <table class="data-table" id="clients-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Documento</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Dirección</th>
+                    <th style="text-align: right; width: 120px;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-list-tbody">
+                  <!-- Carga dinámica -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: PORTAL QUERIES (CONSULTAS) -->
+        <!-- VISTA: CHAT WHATSAPP (CONSULTAS) -->
+        <div id="queries-view" class="view-panel">
+          
+          <!-- HEADER DE CONSULTAS -->
+          <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <h1 style="margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight: bold;">Consultas Clientes</h1>
+            <div id="chat-platform-tabs" style="display: flex; gap: 10px;">
+              <button class="chat-tab-btn active" data-target="wa-tab-pane" style="position: relative; padding: 8px 16px; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                WhatsApp
+                <span id="badge-whatsapp" style="display: none; position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-primary);"></span>
+              </button>
+              <button class="chat-tab-btn" data-target="gmail-tab-pane" style="position: relative; padding: 8px 16px; border-radius: 8px; border: none; background: rgba(99, 102, 241, 0.2); color: #818cf8; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                Gmail
+                <span id="badge-gmail" style="display: none; position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-primary);"></span>
+              </button>
+              <button class="chat-tab-btn" data-target="telegram-tab-pane" style="position: relative; padding: 8px 16px; border-radius: 8px; border: none; background: rgba(99, 102, 241, 0.2); color: #818cf8; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                Telegram
+                <span id="badge-telegram" style="display: none; position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--bg-primary);"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CONTENEDORES DE CHAT -->
+          <div style="position: relative; height: calc(100vh - 210px);">
+            
+            <!-- WHATSAPP PANE -->
+            <div id="wa-tab-pane" class="chat-pane" style="height: 100%;">
+              <div class="chat-container" style="display: flex; height: 100%; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; border: 1px solid var(--card-border);">
+            
+            <!-- Sidebar: Lista de Chats -->
+            <div class="chat-sidebar" style="width: 300px; border-right: 1px solid var(--card-border); display: flex; flex-direction: column; background: var(--bg-primary);">
+              <div style="padding: 15px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);"><i class="fa-brands fa-whatsapp" style="color: #25D366; margin-right: 8px;"></i> Chats</span>
+                <button id="wa-connect-btn" class="action-btn" title="Vincular WhatsApp" style="background: rgba(37, 211, 102, 0.1); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 8px; width: 32px; height: 32px; cursor: pointer;">
+                  <i class="fa-solid fa-qrcode"></i>
+                </button>
+              </div>
+              <div style="padding: 10px;">
+                <input type="text" id="wa-search-chats" class="form-input" placeholder="Buscar o empezar chat..." style="width: 100%; font-size: 0.85rem; border-radius: 20px;">
+              </div>
+              <div id="wa-chat-list" style="flex: 1; overflow-y: auto;">
+                <!-- Lista generada dinámicamente -->
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Cargando chats...</div>
+              </div>
+            </div>
+
+            <!-- Main: Área de Mensajes -->
+            <div class="chat-main" style="flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative;">
+              <!-- Header del Chat Activo -->
+              <div id="wa-active-header" style="padding: 12px 20px; background: var(--bg-primary); border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 15px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold;" id="wa-active-avatar">?</div>
+                <div>
+                  <div id="wa-active-name" style="font-weight: 600; color: var(--text-main); font-size: 1rem;">Selecciona un chat</div>
+                  <div id="wa-active-number" style="font-size: 0.8rem; color: var(--text-muted);"></div>
+                </div>
+              </div>
+
+              <!-- Historial de Mensajes -->
+              <div id="wa-messages-container" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-size: cover; background-blend-mode: overlay; background-color: rgba(11, 20, 26, 0.95);">
+                <!-- Mensajes dinámicos -->
+                <div style="display: flex; justify-content: center; height: 100%; align-items: center; flex-direction: column; opacity: 0.7;">
+                  <i class="fa-brands fa-whatsapp" style="font-size: 4rem; color: #25D366; margin-bottom: 15px;"></i>
+                  <p style="color: var(--text-muted);">Vincula tu teléfono y envía/recibe mensajes al instante.</p>
+                </div>
+              </div>
+
+              <!-- Input Area -->
+              <div id="wa-input-area" style="padding: 15px; background: var(--bg-primary); border-top: 1px solid var(--card-border); display: none; align-items: center; gap: 10px;">
+                <button id="wa-attach-btn" class="action-btn" title="Adjuntar multimedia" style="background: transparent; color: var(--text-muted); border: none; font-size: 1.2rem; cursor: pointer;">
+                  <i class="fa-solid fa-paperclip"></i>
+                </button>
+                <input type="file" id="wa-attach-input" style="display: none;" accept="image/*,video/*,audio/*,application/pdf">
+                <input type="text" id="wa-message-input" placeholder="Escribe un mensaje aquí..." style="flex: 1; padding: 12px 20px; border-radius: 24px; border: 1px solid var(--card-border); background: var(--bg-secondary); color: var(--text-main); font-size: 0.95rem; outline: none;">
+                <button id="wa-send-btn" class="action-btn" title="Enviar" style="background: #25D366; color: #fff; border: none; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(37, 211, 102, 0.2);">
+                  <i class="fa-solid fa-paper-plane" style="margin-left: -2px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        
+            <!-- GMAIL PANE -->
+            <div id="gmail-tab-pane" class="chat-pane" style="height: 100%; display: none;">
+              <div class="chat-container" style="display: flex; height: 100%; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; border: 1px solid var(--card-border);">
+                <!-- Sidebar -->
+                <div class="chat-sidebar" style="width: 300px; border-right: 1px solid var(--card-border); display: flex; flex-direction: column; background: var(--bg-primary);">
+                  <div style="padding: 15px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);"><i class="fa-brands fa-google" style="color: #ea4335; margin-right: 8px;"></i> Correos</span>
+                    <button class="action-btn" title="Vincular Gmail" style="background: rgba(234, 67, 53, 0.1); color: #ea4335; border: 1px solid rgba(234, 67, 53, 0.3); border-radius: 8px; width: 32px; height: 32px; cursor: pointer;">
+                      <i class="fa-solid fa-link"></i>
+                    </button>
+                  </div>
+                  <div style="padding: 10px;">
+                    <input type="text" class="form-input" placeholder="Buscar correo..." style="width: 100%; font-size: 0.85rem; border-radius: 20px;">
+                  </div>
+                  <div style="flex: 1; overflow-y: auto;">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">Bandeja vacía</div>
+                  </div>
+                </div>
+                <!-- Main Area -->
+                <div class="chat-main" style="flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative;">
+                  <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: rgba(11, 20, 26, 0.95);">
+                    <i class="fa-brands fa-google" style="font-size: 4rem; color: #ea4335; margin-bottom: 15px; opacity: 0.7;"></i>
+                    <p style="color: var(--text-muted);">Conecta tu cuenta de Gmail para ver y responder correos.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TELEGRAM PANE -->
+            <div id="telegram-tab-pane" class="chat-pane" style="height: 100%; display: none;">
+              <div class="chat-container" style="display: flex; height: 100%; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; border: 1px solid var(--card-border);">
+                <!-- Sidebar -->
+                <div class="chat-sidebar" style="width: 300px; border-right: 1px solid var(--card-border); display: flex; flex-direction: column; background: var(--bg-primary);">
+                  <div style="padding: 15px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600; font-size: 1.1rem; color: var(--text-main);"><i class="fa-brands fa-telegram" style="color: #229ED9; margin-right: 8px;"></i> Chats</span>
+                    <button class="action-btn" title="Vincular Telegram" style="background: rgba(34, 158, 217, 0.1); color: #229ED9; border: 1px solid rgba(34, 158, 217, 0.3); border-radius: 8px; width: 32px; height: 32px; cursor: pointer;">
+                      <i class="fa-solid fa-link"></i>
+                    </button>
+                  </div>
+                  <div style="padding: 10px;">
+                    <input type="text" class="form-input" placeholder="Buscar chat..." style="width: 100%; font-size: 0.85rem; border-radius: 20px;">
+                  </div>
+                  <div style="flex: 1; overflow-y: auto;">
+                    <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">No hay chats de Telegram</div>
+                  </div>
+                </div>
+                <!-- Main Area -->
+                <div class="chat-main" style="flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative;">
+                  <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: rgba(11, 20, 26, 0.95);">
+                    <i class="fa-brands fa-telegram" style="font-size: 4rem; color: #229ED9; margin-bottom: 15px; opacity: 0.7;"></i>
+                    <p style="color: var(--text-muted);">Vincula tu bot de Telegram para gestionar mensajes.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Modal QR WhatsApp -->
+        <div id="wa-qr-modal" class="modal-overlay" style="display: none;">
+          <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header">
+              <h2><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Vincular WhatsApp</h2>
+              <button class="modal-close" onclick="document.getElementById('wa-qr-modal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+              <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 0.95rem;">Abre WhatsApp en tu teléfono, ve a Dispositivos vinculados y escanea este código:</p>
+              <div id="wa-qr-container" style="background: #fff; padding: 15px; border-radius: 10px; display: inline-block; min-width: 250px; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: #cbd5e1;"></i>
+              </div>
+              <p id="wa-status-text" style="margin-top: 20px; font-weight: bold; color: #3b82f6;">Conectando al servidor...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: USUARIOS (ADMIN ONLY) -->
+        <div id="users-view" class="view-panel">
+          <div class="admin-view-container">
+            <div class="content-card">
+              <div class="card-header-main">
+                <span class="card-title-main"><i class="fa-solid fa-users-gear"></i> Gestión de Usuarios del Sistema</span>
+                <button id="add-user-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                  <i class="fa-solid fa-user-shield"></i> Nuevo Usuario
+                </button>
+              </div>
+              <div style="overflow-x: auto; margin-top: 15px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Usuario</th>
+                      <th>Nombre Completo</th>
+                      <th>Correo</th>
+                      <th>Rol</th>
+                      <th>Estado</th>
+                      <th style="text-align: right; width: 120px;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="staff-denied-container" style="display: none;">
+            <div class="restricted-view">
+              <i class="fa-solid fa-triangle-exclamation restricted-icon"></i>
+              <h2 class="restricted-title">Acceso Denegado</h2>
+              <p class="restricted-desc">Esta sección está reservada exclusivamente para usuarios con rol de <strong>Administrador</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: TÉCNICOS (ADMIN ONLY) -->
+        <div id="techs-view" class="view-panel">
+          <div class="admin-view-container">
+            <div class="content-card">
+              <div class="card-header-main">
+                <span class="card-title-main"><i class="fa-solid fa-user-tie"></i> Registro de Personal Técnico</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <input type="text" id="search-techs" class="form-input" placeholder="Buscar técnicos..." style="width: 250px;">
+                  <button id="add-tech-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                    <i class="fa-solid fa-user-plus"></i> Agregar Técnico
+                  </button>
+                </div>
+              </div>
+              <div style="overflow-x: auto; margin-top: 15px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Especialidad</th>
+                      <th>Contacto</th>
+                      <th>Usuario Enlazado</th>
+                      <th>Estado</th>
+                      <th style="text-align: right; width: 120px;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="techs-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="staff-denied-container" style="display: none;">
+            <div class="restricted-view">
+              <i class="fa-solid fa-triangle-exclamation restricted-icon"></i>
+              <h2 class="restricted-title">Acceso Denegado</h2>
+              <p class="restricted-desc">Esta sección está reservada exclusivamente para usuarios con rol de <strong>Administrador</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- VISTA: SERVICIOS (ADMIN ONLY) -->
+        <div id="services-view" class="view-panel">
+          <div class="admin-view-container">
+            <div class="content-card">
+              <div class="card-header-main">
+                <span class="card-title-main"><i class="fa-solid fa-hand-holding-hand"></i> Catálogo de Servicios</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <input type="text" id="search-services" class="form-input" placeholder="Buscar servicios..." style="width: 250px;">
+                  <button id="add-service-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                    <i class="fa-solid fa-plus"></i> Agregar Servicio
+                  </button>
+                </div>
+              </div>
+              <div style="overflow-x: auto; margin-top: 15px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre del Servicio</th>
+                      <th>Descripción</th>
+                      <th>Precio Estándar</th>
+                      <th>Estado</th>
+                      <th style="text-align: right; width: 120px;">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="services-list-tbody">
+                    <!-- Carga dinámica -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="staff-denied-container" style="display: none;">
+            <div class="restricted-view">
+              <i class="fa-solid fa-triangle-exclamation restricted-icon"></i>
+              <h2 class="restricted-title">Acceso Denegado</h2>
+              <p class="restricted-desc">Esta sección está reservada exclusivamente para usuarios con rol de <strong>Administrador</strong>.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================================================
+       CONTENEDORES FLOTANTES (MODALES, TOASTS, CONFIRMACIONES)
+       ============================================================================ -->
+
+  <!-- Contenedor de Toasts -->
+  <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
+
+  <!-- Diálogo de Confirmación Personalizado -->
+  <div id="confirm-modal" class="modal-overlay" style="display: none;">
+    <div class="confirm-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 360px; padding: 25px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease-out;">
+      <div class="confirm-icon" style="font-size: 3rem; color: var(--warning); margin-bottom: 15px;"><i class="fa-solid fa-circle-question"></i></div>
+      <h3 id="confirm-title" class="confirm-title" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">¿Confirmar Acción?</h3>
+      <p id="confirm-text" class="confirm-text" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4; margin-bottom: 20px;">Esta acción no se puede deshacer.</p>
+      <div class="confirm-actions" style="display: flex; gap: 10px; justify-content: center;">
+        <button id="confirm-yes-btn" class="btn-primary" style="background: var(--danger); box-shadow: 0 4px 12px var(--danger-glow); width: auto; padding: 10px 20px; font-size: 0.9rem;">Confirmar</button>
+        <button id="confirm-no-btn" class="btn-secondary" style="margin-top: 0; width: auto; padding: 10px 20px; font-size: 0.9rem;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Clientes -->
+  <div id="client-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 440px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="client-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Registrar Cliente</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="client-form">
+        <input type="hidden" id="client-id">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="client-name" class="form-label">Nombre Completo</label>
+          <input type="text" id="client-name" class="form-input" required placeholder="ej: Juan Pérez">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="client-document" class="form-label">Identificación (Cédula/NIT)</label>
+          <input type="text" id="client-document" class="form-input" required placeholder="ej: 10203040">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="client-phone" class="form-label">Teléfono</label>
+          <input type="text" id="client-phone" class="form-input" required placeholder="ej: +57 300 123 4567">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="client-email" class="form-label">Correo Electrónico</label>
+          <input type="email" id="client-email" class="form-input" required placeholder="ej: juan@correo.com">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="client-address" class="form-label">Dirección</label>
+          <input type="text" id="client-address" class="form-input" placeholder="ej: Calle 10 # 5-20">
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Guardar Cliente</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Reparaciones -->
+  <div id="repair-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 600px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="repair-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Registrar Reparación</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="repair-form">
+        <input type="hidden" id="repair-id">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;">
+            <label for="repair-client" class="form-label">Cliente</label>
+            <select id="repair-client" class="form-input" required style="background-color: var(--bg-primary);">
+              <!-- Cargar dinámicamente -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-device" class="form-label">Tipo de Dispositivo</label>
+            <input type="text" id="repair-device" class="form-input" required placeholder="ej: Celular, Laptop">
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-brand" class="form-label">Marca</label>
+            <input type="text" id="repair-brand" class="form-input" required placeholder="ej: Apple, Lenovo">
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-model" class="form-label">Modelo</label>
+            <input type="text" id="repair-model" class="form-input" required placeholder="ej: iPhone 12, ThinkPad T14">
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label for="repair-serial" class="form-label" style="margin-bottom: 0;">Número de Serie</label>
+              <button type="button" id="btn-generate-serial" style="background: transparent; border: none; color: var(--primary); font-size: 0.8rem; cursor: pointer; font-weight: 600;" title="Asignar o generar un nuevo número de serie automático (ej: AB123)">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto (AB123)
+              </button>
+            </div>
+            <input type="text" id="repair-serial" class="form-input" required placeholder="ej: AB123" style="margin-top: 4px;">
+          </div>
+          <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;">
+            <label for="repair-fault" class="form-label">Falla Reportada</label>
+            <textarea id="repair-fault" class="form-input" rows="2" required placeholder="Describe la falla reportada por el cliente..." style="resize: vertical; font-family: inherit;"></textarea>
+          </div>
+          <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;">
+            <label for="repair-diagnostico" class="form-label">Diagnóstico Técnico</label>
+            <textarea id="repair-diagnostico" class="form-input" rows="2" placeholder="Notas sobre el diagnóstico técnico del dispositivo..." style="resize: vertical; font-family: inherit;"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-tech" class="form-label">Técnico Asignado</label>
+            <select id="repair-tech" class="form-input" style="background-color: var(--bg-primary);">
+              <!-- Cargar dinámicamente -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-status" class="form-label">Estado de la Reparación</label>
+            <select id="repair-status" class="form-input" required style="background-color: var(--bg-primary);">
+              <option value="Recibido">Recibido</option>
+              <option value="En Diagnostico">En Diagnóstico</option>
+              <option value="Presupuestado">Presupuestado</option>
+              <option value="En Reparacion">En Reparación</option>
+              <option value="Listo para Entrega">Listo para Entrega</option>
+              <option value="Entregado">Entregado</option>
+              <option value="Devuelto sin Reparar">Devuelto sin Reparar</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-cost" class="form-label">Costo Estimado (Presupuesto)</label>
+            <input type="number" id="repair-cost" class="form-input" value="0" min="0">
+          </div>
+          <div class="form-group" style="margin-bottom: 5px;">
+            <label for="repair-advance" class="form-label">Abono Inicial</label>
+            <input type="number" id="repair-advance" class="form-input" value="0" min="0">
+          </div>
+          <div class="form-group" style="grid-column: span 2; margin-bottom: 5px;">
+            <label for="repair-promised-date" class="form-label">Fecha Prometida (Entrega Estimada)</label>
+            <input type="date" id="repair-promised-date" class="form-input">
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 20px; padding: 12px;">Guardar Orden de Reparación</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Centro de Chat y Respuesta Multicanal -->
+  <div id="query-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 620px; max-width: 95vw; padding: 25px 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div id="query-info-avatar" style="font-size: 1.5rem; width: 38px; height: 38px; border-radius: 50%; background: rgba(99,102,241,0.15); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div>
+            <h3 class="modal-title" style="font-size: 1.1rem; font-weight: 700; margin: 0;">Atención de Consulta Multicanal</h3>
+            <span id="query-info-sender-header" style="font-size: 0.8rem; color: var(--text-muted);">Cliente</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <form id="query-form">
+        <input type="hidden" id="query-id">
+        
+        <!-- Info del Equipo -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border); margin-bottom: 12px;">
+          <span style="font-size: 0.82rem; color: var(--text-muted);"><i class="fa-solid fa-laptop"></i> Equipo: <strong id="query-info-device" style="color: var(--text-main);">Marca Modelo</strong></span>
+          <span id="query-channel-badge-modal"><span class="badge badge-primary"><i class="fa-solid fa-globe"></i> Web</span></span>
+        </div>
+
+        <!-- Línea de Tiempo / Burbujas de Chat -->
+        <div class="chat-timeline" id="query-chat-timeline">
+          <!-- Carga dinámica de burbujas -->
+        </div>
+
+        <!-- Plantillas de Respuesta Rápida -->
+        <div class="quick-templates-row">
+          <span style="font-size: 0.75rem; color: var(--text-muted); align-self: center; margin-right: 4px;">Respuestas rápidas:</span>
+          <button type="button" class="quick-template-btn" data-template="Presupuesto: El valor estimado para la reparación de su dispositivo es de $">
+            <i class="fa-solid fa-calculator"></i> Presupuesto
+          </button>
+          <button type="button" class="quick-template-btn" data-template="Diagnóstico: Su equipo se encuentra en mesa de trabajo bajo diagnóstico técnico. Le notificaremos el avance a la brevedad.">
+            <i class="fa-solid fa-microchip"></i> En Diagnóstico
+          </button>
+          <button type="button" class="quick-template-btn" data-template="Completado: ¡Buenas noticias! La reparación de su dispositivo ha sido finalizada con éxito. Ya puede pasar a retirarlo.">
+            <i class="fa-solid fa-circle-check"></i> Listo para Entrega
+          </button>
+        </div>
+
+        <!-- Campo de Mensaje de Respuesta -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="query-response" class="form-label">Mensaje de Respuesta</label>
+          <textarea id="query-response" class="form-input" rows="3" required placeholder="Escribe tu mensaje para el cliente..." style="resize: vertical; font-family: inherit; font-size: 0.9rem;"></textarea>
+        </div>
+
+        <!-- Selector de Canal y Notificación de Destino -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+          <div class="form-group">
+            <label for="query-channel-send" class="form-label">Canal de Despacho</label>
+            <select id="query-channel-send" class="form-input" style="background-color: var(--bg-primary); font-size: 0.85rem;">
+              <option value="Telegram">Telegram Bot API</option>
+              <option value="Gmail">Correo Electrónico (Gmail)</option>
+              <option value="WhatsApp">WhatsApp Business API</option>
+              <option value="Web">Sistema Interno (Portal Web)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="query-status" class="form-label">Estado de la Consulta</label>
+            <select id="query-status" class="form-input" required style="background-color: var(--bg-primary); font-size: 0.85rem;">
+              <option value="Respondida">Validar y Enviar Respuesta</option>
+              <option value="Cerrada">Cerrar Consulta sin Respuesta</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="query-channel-notice" class="channel-target-notice">
+          <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i>
+          <span id="query-channel-notice-text">Despachando respuesta...</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button type="submit" id="query-submit-btn" class="btn-primary" style="padding: 12px; flex: 1;">
+            <i class="fa-solid fa-paper-plane"></i> Enviar Respuesta
+          </button>
+          <button type="button" id="delete-query-modal-btn" class="btn-secondary" style="padding: 12px; background: var(--danger); color: white; border: none; margin-top: 0;" title="Eliminar Consulta">
+            <i class="fa-solid fa-trash"></i> Eliminar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Usuarios -->
+  <div id="user-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 440px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="user-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Registrar Usuario</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="user-form">
+        <input type="hidden" id="user-id">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="user-username" class="form-label">Nombre de Usuario</label>
+          <input type="text" id="user-username" class="form-input" required placeholder="ej: jgomez">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="user-fullname" class="form-label">Nombre Completo</label>
+          <input type="text" id="user-fullname" class="form-input" required placeholder="ej: Jorge Gómez">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="user-email" class="form-label">Correo Electrónico</label>
+          <input type="email" id="user-email" class="form-input" required placeholder="ej: jorge@correo.com">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="user-password" class="form-label">Contraseña</label>
+          <input type="password" id="user-password" class="form-input" placeholder="Contraseña (vacío para conservar)">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="user-role" class="form-label">Rol del Usuario</label>
+          <select id="user-role" class="form-input" required style="background-color: var(--bg-primary);">
+            <option value="Staff">Personal (Staff)</option>
+            <option value="Administrador">Administrador</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="user-active" checked style="width: auto;">
+          <label for="user-active" class="form-label" style="margin-bottom: 0;">Usuario Activo</label>
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Guardar Usuario</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Inventario -->
+  <div id="inventory-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 480px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="inventory-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Agregar Artículo</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="inventory-form">
+        <input type="hidden" id="inventory-id">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inventory-type" class="form-label">Tipo de Artículo</label>
+          <select id="inventory-type" class="form-input" required style="background-color: var(--bg-primary);">
+            <option value="Producto">Producto en Tienda</option>
+            <option value="Pieza">Pieza / Repuesto</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inventory-code" class="form-label">Código de Barras / Ref</label>
+          <input type="text" id="inventory-code" class="form-input" required placeholder="ej: ABC-12345">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inventory-name" class="form-label">Nombre del Artículo</label>
+          <input type="text" id="inventory-name" class="form-input" required placeholder="ej: Pantalla iPhone 11 OEM">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="inventory-desc" class="form-label">Descripción</label>
+          <input type="text" id="inventory-desc" class="form-input" placeholder="ej: Repuesto calidad premium...">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label for="inventory-cost" class="form-label">Precio Compra</label>
+            <input type="number" id="inventory-cost" class="form-input" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label for="inventory-price" class="form-label">Precio Venta</label>
+            <input type="number" id="inventory-price" class="form-input" value="0" min="0">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px;" id="inventory-stock-row">
+          <div class="form-group">
+            <label for="inventory-stock" class="form-label">Stock Inicial</label>
+            <input type="number" id="inventory-stock" class="form-input" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label for="inventory-min-stock" class="form-label">Stock Mínimo</label>
+            <input type="number" id="inventory-min-stock" class="form-input" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;" id="inventory-compat-group">
+          <label for="inventory-compat" class="form-label">Compatibilidad de Modelos</label>
+          <input type="text" id="inventory-compat" class="form-input" placeholder="ej: iPhone 11, iPhone XR">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="inventory-active" checked style="width: auto;">
+          <label for="inventory-active" class="form-label" style="margin-bottom: 0;">Artículo Activo</label>
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Guardar Artículo</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Servicios -->
+  <div id="service-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 440px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="service-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Agregar Servicio</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="service-form">
+        <input type="hidden" id="service-id">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="service-name" class="form-label">Nombre del Servicio</label>
+          <input type="text" id="service-name" class="form-input" required placeholder="ej: Mantenimiento Preventivo">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="service-desc" class="form-label">Descripción</label>
+          <textarea id="service-desc" class="form-input" rows="3" placeholder="Descripción breve del servicio..." style="resize: vertical; font-family: inherit;"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="service-price" class="form-label">Precio Estándar</label>
+          <input type="number" id="service-price" class="form-input" value="0" min="0" step="0.01" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="service-active" checked style="width: auto;">
+          <label for="service-active" class="form-label" style="margin-bottom: 0;">Servicio Activo</label>
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Guardar Servicio</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal CRUD: Técnicos -->
+  <div id="tech-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 460px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 id="tech-modal-title" class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Agregar Técnico</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="tech-form">
+        <input type="hidden" id="tech-id">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="tech-name" class="form-label">Nombre Completo</label>
+          <input type="text" id="tech-name" class="form-input" required placeholder="ej: Carlos Ramírez">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="tech-specialty" class="form-label">Especialidad</label>
+          <input type="text" id="tech-specialty" class="form-input" required placeholder="ej: Microsoldadura / Lógica">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="tech-phone" class="form-label">Teléfono de Contacto</label>
+          <input type="text" id="tech-phone" class="form-input" placeholder="ej: +57 311 000 9988">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="tech-email" class="form-label">Correo Electrónico</label>
+          <input type="email" id="tech-email" class="form-input" placeholder="ej: carlos@correo.com">
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="tech-user-id" class="form-label">Usuario Enlazado (Opcional)</label>
+          <select id="tech-user-id" class="form-input" style="background-color: var(--bg-primary);">
+            <option value="">Sin Usuario Enlazado</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <input type="checkbox" id="tech-active" checked style="width: auto;">
+          <label for="tech-active" class="form-label" style="margin-bottom: 0;">Técnico Activo</label>
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Guardar Técnico</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Ajustar Stock -->
+  <div id="stock-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 400px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Ajustar Inventario</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="stock-form">
+        <input type="hidden" id="stock-item-id">
+        <input type="hidden" id="stock-item-type">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label class="form-label">Artículo Seleccionado</label>
+          <div id="stock-item-name" style="font-weight: 600; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--card-border);">
+            Nombre...
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="stock-move-type" class="form-label">Tipo de Ajuste</label>
+          <select id="stock-move-type" class="form-input" required style="background-color: var(--bg-primary);">
+            <option value="Entrada">Entrada (Abastecimiento)</option>
+            <option value="Salida">Salida (Deterioro / Descarte)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="stock-qty" class="form-label">Cantidad</label>
+          <input type="number" id="stock-qty" class="form-input" value="1" min="1" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="stock-reason" class="form-label">Justificación</label>
+          <input type="text" id="stock-reason" class="form-input" required placeholder="ej: Compra lote o pieza rota">
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Aplicar Ajuste</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Crear Factura / Checkout -->
+  <div id="invoice-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 500px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700;">Checkout / Facturar Órden</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="invoice-form">
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="invoice-client" class="form-label">Cliente (Venta Directa)</label>
+          <select id="invoice-client" class="form-input" style="background-color: var(--bg-primary);">
+            <option value="">Cargando clientes...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="invoice-repair" class="form-label">O Seleccionar Reparación Lista (opcional)</label>
+          <select id="invoice-repair" class="form-input" style="background-color: var(--bg-primary);">
+            <!-- Cargar dinámicamente -->
+          </select>
+        </div>
+        
+        <div id="invoice-cart-section" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); padding: 15px; border-radius: 12px; margin-bottom: 15px; display: none;">
+          <div style="font-weight: 600; margin-bottom: 10px; color: var(--text-muted); display: flex; justify-content: space-between;">
+            <span>Productos en Carrito</span>
+            <button type="button" onclick="clearCart()" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-trash"></i> Vaciar</button>
+          </div>
+          <ul id="invoice-cart-items" style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; max-height: 120px; overflow-y: auto;">
+          </ul>
+        </div>
+        
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--text-muted);">Subtotal:</span>
+            <span id="invoice-calc-cost" style="font-weight: 600;">$0 USD</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--text-muted);">Abono Inicial:</span>
+            <span id="invoice-calc-advance" style="font-weight: 600; color: var(--warning);">$0 USD</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--text-muted);">IVA (15%):</span>
+            <span id="invoice-calc-iva" style="font-weight: 600;">$0 USD</span>
+          </div>
+          <div style="border-top: 1px dashed var(--card-border); margin: 8px 0; padding-top: 8px; display: flex; justify-content: space-between;">
+            <span style="font-weight: 700;">Total a Pagar:</span>
+            <span id="invoice-calc-total" style="font-weight: 700; color: var(--success); font-size: 1.1rem;">$0 USD</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="invoice-payment-method" class="form-label">Método de Pago</label>
+          <select id="invoice-payment-method" class="form-input" required style="background-color: var(--bg-primary);">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Tarjeta Debito">Tarjeta Débito</option>
+            <option value="Tarjeta Credito">Tarjeta Crédito</option>
+            <option value="Transferencia">Transferencia Bancaria</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary" style="padding: 12px;">Confirmar Pago e Imprimir Factura</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Vista Previa e Impresión de Factura -->
+  <div id="invoice-print-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 680px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding: 18px 25px;">
+        <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700;"><i class="fa-solid fa-file-invoice"></i> Comprobante Electrónico (SRI)</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      <div id="invoice-preview-container" style="padding: 25px; overflow-y: auto; flex-grow: 1; background: #fff; color: #1e293b; border-radius: 8px; margin: 15px;">
+        <!-- Contenido HTML de la Factura renderizado dinámicamente -->
+      </div>
+      <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; background: rgba(0,0,0,0.1);">
+        <button type="button" id="btn-print-printer" class="btn-primary" style="width: auto; padding: 10px 20px;">
+          <i class="fa-solid fa-print"></i> Imprimir en Impresora Detectada
+        </button>
+        <button type="button" id="btn-print-pdf" class="btn-secondary" style="width: auto; padding: 10px 20px; margin-top: 0; border: 1px solid var(--primary); color: #fff; background: var(--primary-dark);">
+          <i class="fa-solid fa-file-pdf"></i> Guardar como PDF
+        </button>
+        <button type="button" class="btn-secondary modal-close-btn" style="width: auto; padding: 10px 20px; margin-top: 0;">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmación de Borrado de Reporte -->
+  <div id="delete-report-modal" class="modal-overlay" style="display: none; z-index: 2000;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--danger); border-radius: 16px; width: 450px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.8);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 20px;">
+        <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700; color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> PELIGRO: Borrar Registros</h3>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="document.getElementById('delete-report-modal').style.display='none'">&times;</button>
+      </div>
+      
+      <p style="margin-bottom: 15px; line-height: 1.5;">¿Estás absolutamente seguro de que deseas <strong>ELIMINAR DE FORMA PERMANENTE</strong> todos los registros financieros emitidos entre el <strong id="del-start-date-text"></strong> y el <strong id="del-end-date-text"></strong>?</p>
+      <p style="margin-bottom: 20px; line-height: 1.5; color: var(--warning);">Esta acción es irreversible, eliminará el historial de caja y no devolverá el stock al inventario.</p>
+      
+      <div class="form-group" style="margin-bottom: 25px;">
+        <label for="delete-report-confirm-input" class="form-label" style="color: var(--danger);">Para continuar, escribe "ELIMINAR REGISTRO"</label>
+        <input type="text" id="delete-report-confirm-input" class="form-input" placeholder="ELIMINAR REGISTRO" autocomplete="off" style="border-color: var(--danger); background-color: var(--bg-primary);">
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" style="width: auto; padding: 10px 20px; margin-top: 0;" onclick="document.getElementById('delete-report-modal').style.display='none'">Cancelar</button>
+        <button type="button" id="confirm-delete-report-btn" class="btn-primary" style="width: auto; padding: 10px 20px; margin-top: 0; background: var(--danger); border: none; opacity: 0.5; cursor: not-allowed;" disabled>Eliminar Definitivamente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
