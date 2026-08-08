@@ -1,6 +1,6 @@
 # Store - Sistema de Gestión y Facturación (POS & Soporte Técnico)
 
-Un sistema integral desarrollado para la administración completa de tiendas, talleres de electrónica y negocios de soporte técnico. Construido con tecnología de escritorio moderna (**Electron.js**) y respaldado por una base de datos robusta (**Microsoft SQL Server**).
+Un sistema integral desarrollado para la administración completa de tiendas, talleres de electrónica y negocios de soporte técnico. Construido con tecnología de escritorio moderna (**Electron.js**) y respaldado por una base de datos robusta (**PostgreSQL**).
 
 ## 🚀 Características Principales
 
@@ -48,16 +48,22 @@ Un sistema integral desarrollado para la administración completa de tiendas, ta
 
 * **Frontend:** HTML5, CSS3, JavaScript Vanilla (sin frameworks pesados para un rendimiento nativo ultrarrápido). Iconos de FontAwesome.
 * **Backend / Desktop Framework:** [Electron.js](https://www.electronjs.org/) (Node.js integrado).
-* **Base de Datos:** Microsoft SQL Server (`mssql` driver para Node).
+* **Base de Datos:** PostgreSQL (`pg` driver para Node).
 * **Otras integraciones:** Chart.js (gráficos), xlsx (manipulación de Excel), window.speechSynthesis (alertas de voz).
 
 ---
 
 ## ⚙️ Instalación y Configuración
 
-### Prerrequisitos
+### 💿 Instalador Rápido (Recomendado para Windows)
+Puedes instalar la aplicación completa, incluyendo configuración de base de datos y dependencias en un solo clic, usando nuestro instalador empaquetado:
+🔗 **[Descargar Instalador V1.0](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/Instalador_GestorTienda.exe)**
+
+---
+
+### Prerrequisitos (Instalación Manual o Desarrollo)
 1. **Node.js** (versión 16+ recomendada).
-2. **Microsoft SQL Server** instalado (localmente o en red).
+2. **PostgreSQL** instalado (localmente en el puerto 5432).
 
 ### Pasos
 1. **Clonar el repositorio:**
@@ -72,8 +78,8 @@ Un sistema integral desarrollado para la administración completa de tiendas, ta
    ```
 
 3. **Base de Datos:**
-   * Asegúrate de tener ejecutando una instancia de SQL Server.
-   * El sistema creará automáticamente la base de datos `GestionElectronicaDB` y todas sus tablas y datos iniciales en la primera ejecución si el servidor local está disponible.
+   * Asegúrate de tener ejecutando PostgreSQL en el puerto 5432.
+   * Ejecuta el instalador o los scripts SQL proporcionados para inicializar la base de datos `tienda` y sus tablas.
 
 4. **Ejecutar la aplicación (Modo Desarrollo):**
    ```bash
@@ -81,7 +87,8 @@ Un sistema integral desarrollado para la administración completa de tiendas, ta
    ```
 
 5. **Credenciales por defecto:**
-   * Al iniciar el sistema por primera vez, utiliza el usuario administrador base que se genera para entrar al panel y ajustar tu configuración (tienda, RUC/NIT, bots de mensajería).
+   * Al iniciar el sistema por primera vez, el usuario es **admin** y la contraseña es **admin**.
+   * Puedes cambiar estas credenciales o crear cuentas nuevas en el apartado **Gestión de Usuarios del Sistema** de la aplicación.
 
 ---
 
