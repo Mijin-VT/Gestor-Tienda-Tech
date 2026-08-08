@@ -1,0 +1,7 @@
+{
+  "user": "postgres",
+  "host": "localhost",
+  "database": "TERCERLED",
+  "password": "admin123",
+  "port": 5432
+}
