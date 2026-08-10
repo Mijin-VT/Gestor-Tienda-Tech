@@ -62,14 +62,14 @@ Un sistema integral desarrollado para la administración completa de tiendas, ta
 Puedes instalar la aplicación completa, incluyendo configuración de base de datos y dependencias en un solo clic, usando nuestro instalador empaquetado:
 🔗 **[Descargar Instalador V1.0 para Windows](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/Instalador_GestorTienda.exe)**
 
-### 🐧 Versión Portátil (Linux)
-Para sistemas basados en Linux (Ubuntu, Debian, Fedora, Mint, etc.), proporcionamos una versión portátil comprimida lista para ejecutarse:
-🔗 **[Descargar Versión V1.0 para Linux (.tar.gz)](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/gestion_electronica-1.0.0.tar.gz)**
+### 🐧 Instalador Gráfico Nativo (Linux)
+Para sistemas basados en Linux (Ubuntu, Debian, Fedora, Mint, etc.), proporcionamos un asistente de instalación gráfico profesional (`.run`) idéntico a la experiencia en Windows:
+🔗 **[Descargar Instalador V1.0 para Linux (.run)](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/Instalador_GestorTienda.run)**
 
-**Pasos de uso en Linux:**
+**Pasos de instalación en Linux:**
 1. **Base de Datos:** Asegúrate de tener instalado **PostgreSQL** y ejecutándose en el puerto `5432` (con contraseña por defecto `admin`).
-2. **Descomprimir:** Extrae el archivo `.tar.gz` descargado.
-3. **Ejecutar:** Entra a la carpeta extraída y dale doble clic al archivo ejecutable llamado `gestion_electronica` (o ejecútalo vía terminal con `./gestion_electronica`). La base de datos y las tablas se crearán automáticamente.
+2. **Dar Permisos:** Al descargar el archivo `.run`, dale permisos de ejecución (clic derecho > Propiedades > Permisos > Permitir ejecutar el archivo como un programa, o vía terminal con `chmod +x Instalador_GestorTienda.run`).
+3. **Instalar:** Dale doble clic al archivo. Se abrirá el asistente gráfico que te guiará y creará automáticamente los accesos directos en tu menú de aplicaciones.
 
 ---
 
