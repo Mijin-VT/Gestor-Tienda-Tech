@@ -1,7 +1,7 @@
 # Store - Sistema de Gestión y Facturación (POS & Soporte Técnico)
 
 <p align="center">
-  <img src="dashboard.png" width="300" height="300" alt="Dashboard">
+  <img src="dashboard.png" width="400" height="400" alt="Dashboard">
 </p>
 Un sistema integral desarrollado para la administración completa de tiendas, talleres de electrónica y negocios de soporte técnico. Construido con tecnología de escritorio moderna (**Electron.js**) y respaldado por una base de datos robusta (**PostgreSQL**).
 
