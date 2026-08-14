@@ -62,14 +62,15 @@ Un sistema integral desarrollado para la administración completa de tiendas, ta
 Puedes instalar la aplicación completa, incluyendo configuración de base de datos y dependencias en un solo clic, usando nuestro instalador empaquetado:
 🔗 **[Descargar Instalador V1.0 para Windows](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/Instalador_GestorTienda.exe)**
 
-### 🐧 Instalador Gráfico Nativo (Linux)
-Para sistemas basados en Linux (Ubuntu, Debian, Fedora, Mint, etc.), proporcionamos un asistente de instalación gráfico profesional (`.run`) idéntico a la experiencia en Windows:
-🔗 **[Descargar Instalador V1.0 para Linux (.run)](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/Instalador_GestorTienda.run)**
+### 🐧 Paquete Nativo de Instalación (Linux)
+Para sistemas basados en Debian (Ubuntu, Linux Mint, Pop!_OS, etc.), proporcionamos el instalador nativo oficial (`.deb`) que se integra perfectamente con el sistema:
+🔗 **[Descargar Instalador V1.0 para Linux (.deb)](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/gestion_electronica-1.0.0.deb)**
 
 **Pasos de instalación en Linux:**
 1. **Base de Datos:** Asegúrate de tener instalado **PostgreSQL** y ejecutándose en el puerto `5432` (con contraseña por defecto `admin`).
-2. **Dar Permisos:** Al descargar el archivo `.run`, dale permisos de ejecución (clic derecho > Propiedades > Permisos > Permitir ejecutar el archivo como un programa, o vía terminal con `chmod +x Instalador_GestorTienda.run`).
-3. **Instalar:** Dale doble clic al archivo. Se abrirá el asistente gráfico que te guiará y creará automáticamente los accesos directos en tu menú de aplicaciones.
+2. **Instalar el Paquete:** Dale doble clic al archivo `.deb` descargado para abrirlo con el Centro de Software (o gestor de paquetes de tu sistema) y presiona "Instalar".
+   - *Alternativa por terminal:* `sudo dpkg -i gestion_electronica-1.0.0.deb` (seguido de `sudo apt install -f` si hiciera falta alguna dependencia).
+3. **Ejecutar:** Búscalo en tu menú de aplicaciones como "Gestor Tienda Tech" y ábrelo.
 
 ---
 
