@@ -93,7 +93,7 @@ Para que el sistema funcione correctamente, requiere una instancia de **PostgreS
    ```
 
 3. **Configurar la contraseña del usuario `postgres`:**
-   Ingresa a la consola de PostgreSQL y define la contraseña (por defecto `admin123`):
+   Ingresa a la consola de PostgreSQL y define la contraseña (por defecto `admin123`): (o la contraseña de tu preferencia).
    ```bash
    sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'admin123';"
    ```
