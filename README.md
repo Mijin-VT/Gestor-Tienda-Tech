@@ -93,20 +93,20 @@ Para que el sistema funcione correctamente, requiere una instancia de **PostgreS
    ```
 
 3. **Configurar la contraseña del usuario `postgres`:**
-   Ingresa a la consola de PostgreSQL y define la contraseña (por defecto `admin123`):
+   Ingresa a la consola de PostgreSQL y define la contraseña (por defecto `admin123`): (o la contraseña de tu preferencia).
    ```bash
    sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'admin123';"
    ```
 
-4. **Crear la base de datos `TERCERLED`:**
+4. **Crear la base de datos `NOMBRE_DE_TIENDA`:**
    ```bash
-   sudo -u postgres psql -c "CREATE DATABASE \"TERCERLED\";"
+   sudo -u postgres psql -c "CREATE DATABASE \"NOMBRE_DE_TIENDA\";"
    ```
 
 5. **Restaurar el esquema y tablas iniciales:**
    Ejecuta el archivo de esquema `base_de_datos_pg.sql` incluido en el proyecto:
    ```bash
-   sudo -u postgres psql -d TERCERLED -f base_de_datos_pg.sql
+   sudo -u postgres psql -d NOMBRE_DE_TIENDA -f base_de_datos_pg.sql
    ```
 
 ---
@@ -127,8 +127,8 @@ Para que el sistema funcione correctamente, requiere una instancia de **PostgreS
    * Escribe tu contraseña y presiona *Enter*.
    * Ejecuta los siguientes comandos:
      ```sql
-     CREATE DATABASE "TERCERLED";
-     \c TERCERLED
+     CREATE DATABASE "NOMBRE_DE_TIENDA";
+     \c NOMBRE_DE_TIENDA
      \i 'd:/Desktop/AGENTES/GESTION_ELECTRONICA/base_de_datos_pg.sql'
      ```
 
@@ -142,7 +142,7 @@ Si instalaste PostgreSQL con un usuario, contraseña o puerto diferente, puedes 
 {
   "user": "postgres",
   "host": "localhost",
-  "database": "TERCERLED",
+  "database": "NOMBRE_DE_TIENDA",
   "password": "tu_contraseña_aqui",
   "port": 5432
 }
