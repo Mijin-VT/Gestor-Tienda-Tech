@@ -18,7 +18,7 @@ function getConfig() {
   return {
     user: 'postgres',
     host: 'localhost',
-    database: 'TERCERLED',
+    database: 'NOMBRE_DE_TIENDA',
     password: 'admin123',
     port: 5432
   };
