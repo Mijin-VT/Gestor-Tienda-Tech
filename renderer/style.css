@@ -852,3 +852,495 @@ body {
   gap: 8px;
   color: var(--text-muted);
 }
+
+/* ============================================================================
+   MÓDULO DE NOTAS
+   ============================================================================ */
+
+/* Paleta de colores por nota */
+:root {
+  --nota-default-bg: rgba(31, 41, 55, 0.85);
+  --nota-default-border: rgba(255,255,255,0.09);
+  --nota-default-accent: #6366f1;
+
+  --nota-yellow-bg: rgba(92, 70, 0, 0.6);
+  --nota-yellow-border: rgba(245, 158, 11, 0.35);
+  --nota-yellow-accent: #f59e0b;
+
+  --nota-blue-bg: rgba(0, 45, 90, 0.65);
+  --nota-blue-border: rgba(56, 189, 248, 0.3);
+  --nota-blue-accent: #38bdf8;
+
+  --nota-green-bg: rgba(0, 60, 35, 0.65);
+  --nota-green-border: rgba(16, 185, 129, 0.3);
+  --nota-green-accent: #10b981;
+
+  --nota-red-bg: rgba(80, 10, 10, 0.65);
+  --nota-red-border: rgba(239, 68, 68, 0.35);
+  --nota-red-accent: #ef4444;
+
+  --nota-purple-bg: rgba(55, 10, 90, 0.6);
+  --nota-purple-border: rgba(168, 85, 247, 0.35);
+  --nota-purple-accent: #a855f7;
+}
+
+/* Cabecera de la vista de notas */
+.notas-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.notas-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notas-counter {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-border);
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+}
+
+.notas-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notas-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.notas-search-wrap i {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.notas-search-wrap input {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-family: var(--font-family);
+  font-size: 0.88rem;
+  padding: 9px 14px 9px 36px;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  user-select: text;
+}
+
+.notas-search-wrap input:focus {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+/* Grilla masonry-like de notas */
+.notas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* Tarjeta individual de nota */
+.nota-card {
+  background: var(--nota-default-bg);
+  border: 1px solid var(--nota-default-border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s;
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.25s ease;
+  overflow: hidden;
+}
+
+.nota-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: var(--nota-default-accent);
+  border-radius: 14px 0 0 14px;
+  transition: width 0.2s;
+}
+
+.nota-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.nota-card:hover::before {
+  width: 5px;
+}
+
+/* Variantes de color */
+.nota-card[data-color="yellow"] { background: var(--nota-yellow-bg); border-color: var(--nota-yellow-border); }
+.nota-card[data-color="yellow"]::before { background: var(--nota-yellow-accent); }
+
+.nota-card[data-color="blue"] { background: var(--nota-blue-bg); border-color: var(--nota-blue-border); }
+.nota-card[data-color="blue"]::before { background: var(--nota-blue-accent); }
+
+.nota-card[data-color="green"] { background: var(--nota-green-bg); border-color: var(--nota-green-border); }
+.nota-card[data-color="green"]::before { background: var(--nota-green-accent); }
+
+.nota-card[data-color="red"] { background: var(--nota-red-bg); border-color: var(--nota-red-border); }
+.nota-card[data-color="red"]::before { background: var(--nota-red-accent); }
+
+.nota-card[data-color="purple"] { background: var(--nota-purple-bg); border-color: var(--nota-purple-border); }
+.nota-card[data-color="purple"]::before { background: var(--nota-purple-accent); }
+
+/* Encabezado de tarjeta */
+.nota-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nota-card-titulo {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+  flex: 1;
+  word-break: break-word;
+}
+
+.nota-card-titulo.sin-titulo {
+  color: var(--text-dark);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Badge de fijada */
+.nota-pin-badge {
+  color: var(--warning);
+  font-size: 0.8rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+  transform: rotate(20deg);
+  margin-top: 1px;
+}
+
+/* Contenido de tarjeta */
+.nota-card-contenido {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Pie de tarjeta */
+.nota-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.nota-card-date {
+  font-size: 0.74rem;
+  color: var(--text-dark);
+  letter-spacing: 0.01em;
+}
+
+.nota-card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.nota-card:hover .nota-card-actions {
+  opacity: 1;
+}
+
+.nota-action-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--card-border);
+  border-radius: 7px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.nota-action-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-main); }
+.nota-action-btn.pin:hover { color: var(--warning); border-color: var(--warning); }
+.nota-action-btn.delete:hover { color: var(--danger); border-color: var(--danger); }
+
+/* Estado vacío */
+.notas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 80px 20px;
+  color: var(--text-dark);
+}
+
+.notas-empty i {
+  font-size: 3.5rem;
+  opacity: 0.25;
+}
+
+.notas-empty p {
+  font-size: 0.95rem;
+  opacity: 0.5;
+}
+
+/* Modal de nota */
+.nota-modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  width: 540px;
+  max-width: 95vw;
+  padding: 28px 30px 24px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nota-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 14px;
+}
+
+.nota-modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Selector de color */
+.nota-color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nota-color-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.nota-color-options {
+  display: flex;
+  gap: 8px;
+}
+
+.nota-color-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  position: relative;
+  outline: none;
+}
+
+.nota-color-dot[data-color="default"] { background: rgba(99,102,241,0.5); }
+.nota-color-dot[data-color="yellow"]  { background: rgba(245,158,11,0.7); }
+.nota-color-dot[data-color="blue"]    { background: rgba(56,189,248,0.65); }
+.nota-color-dot[data-color="green"]   { background: rgba(16,185,129,0.65); }
+.nota-color-dot[data-color="red"]     { background: rgba(239,68,68,0.65); }
+.nota-color-dot[data-color="purple"]  { background: rgba(168,85,247,0.65); }
+
+.nota-color-dot:hover { transform: scale(1.15); }
+.nota-color-dot.selected { border-color: var(--text-main); transform: scale(1.15); }
+
+/* Campos del modal */
+.nota-modal-title-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  user-select: text;
+}
+
+.nota-modal-title-input:focus { border-color: var(--primary); }
+.nota-modal-title-input::placeholder { color: var(--text-dark); font-weight: 400; }
+
+.nota-modal-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  padding: 12px 14px;
+  outline: none;
+  resize: vertical;
+  min-height: 160px;
+  transition: border-color 0.2s;
+  user-select: text;
+}
+
+.nota-modal-textarea:focus { border-color: var(--primary); }
+.nota-modal-textarea::placeholder { color: var(--text-dark); }
+
+/* Pie del modal */
+.nota-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+
+.nota-pin-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nota-pin-label i { color: var(--warning); }
+.nota-pin-label:hover { color: var(--text-main); }
+
+/* ============================================================================
+   MODAL DE CONFIRMACIÓN PERSONALIZADO
+   ============================================================================ */
+
+@keyframes confirmPop {
+  from { opacity: 0; transform: scale(0.88) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.confirm-modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  width: 360px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.65);
+  animation: confirmPop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-modal-icon-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-modal-icon {
+  font-size: 1.5rem;
+  color: var(--warning);
+}
+
+.confirm-modal-msg {
+  font-size: 0.97rem;
+  font-weight: 500;
+  color: var(--text-main);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.confirm-btn-cancel,
+.confirm-btn-ok {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
+}
+
+.confirm-btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--card-border);
+  color: var(--text-muted);
+}
+
+.confirm-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.confirm-btn-ok {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.confirm-btn-ok:hover {
+  background: rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.65);
+  color: #fca5a5;
+}
+
+.confirm-btn-cancel:active,
+.confirm-btn-ok:active {
+  transform: scale(0.97);
+}
+
+

@@ -88,5 +88,11 @@ contextBridge.exposeInMainWorld('api', {
   getSalesChartData: (period) => ipcRenderer.invoke('db:get-sales-chart', period),
   getFinancialReports: (startDate, endDate) => ipcRenderer.invoke('db:get-financial-reports', { startDate, endDate }),
   deleteInvoicesByDate: (startDate, endDate) => ipcRenderer.invoke('db:delete-invoices-by-date', { startDate, endDate }),
-  emailInvoice: (htmlContent, toEmail, invoiceNumber) => ipcRenderer.invoke('app:email-invoice', { htmlContent, toEmail, invoiceNumber })
+  emailInvoice: (htmlContent, toEmail, invoiceNumber) => ipcRenderer.invoke('app:email-invoice', { htmlContent, toEmail, invoiceNumber }),
+
+  // Notas Internas
+  getNotas: () => ipcRenderer.invoke('db:get-notas'),
+  saveNota: (nota) => ipcRenderer.invoke('db:save-nota', nota),
+  deleteNota: (id) => ipcRenderer.invoke('db:delete-nota', id),
+  toggleNotaFijada: (id) => ipcRenderer.invoke('db:toggle-nota-fijada', id)
 });

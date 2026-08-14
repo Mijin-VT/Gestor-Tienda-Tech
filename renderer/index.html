@@ -148,6 +148,13 @@
           </a>
         </li>
         
+        <!-- Notas -->
+        <li class="menu-item" data-target="notas-view">
+          <a class="menu-link">
+            <i class="fa-solid fa-note-sticky"></i> Notas
+          </a>
+        </li>
+        
         <!-- 5. Técnicos -->
         <li class="menu-item admin-only" data-target="techs-view">
           <a class="menu-link">
@@ -1154,6 +1161,33 @@
           </div>
         </div>
 
+        <!-- VISTA: NOTAS -->
+        <div id="notas-view" class="view-panel">
+          <div class="notas-header">
+            <div class="notas-header-left">
+              <span class="notas-counter" id="notas-counter">0 notas</span>
+            </div>
+            <div class="notas-header-actions">
+              <div class="notas-search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="notas-search" placeholder="Buscar notas..." autocomplete="off">
+              </div>
+              <button id="add-nota-btn" class="btn-primary" style="width:auto; padding: 10px 20px; font-size: 0.88rem; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-plus"></i> Nueva Nota
+              </button>
+            </div>
+          </div>
+
+          <!-- Área principal de tarjetas -->
+          <div class="notas-grid" id="notas-grid">
+            <!-- Dinámico -->
+          </div>
+          <div class="notas-empty" id="notas-empty" style="display:none;">
+            <i class="fa-solid fa-note-sticky"></i>
+            <p>No hay notas aún. ¡Crea tu primera nota!</p>
+          </div>
+        </div>
+
         <!-- VISTA: TÉCNICOS (ADMIN ONLY) -->
         <div id="techs-view" class="view-panel">
           <div class="admin-view-container">
@@ -1459,6 +1493,53 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nota -->
+  <div id="nota-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card nota-modal-card">
+      <div class="nota-modal-header">
+        <h3 id="nota-modal-title">Nueva Nota</h3>
+        <button class="modal-close-btn nota-modal-close" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height:1;">&times;</button>
+      </div>
+      <form id="nota-form">
+        <input type="hidden" id="nota-id">
+        <div class="nota-color-picker-row">
+          <span class="nota-color-label">Color:</span>
+          <div class="nota-color-options" id="nota-color-options">
+            <button type="button" class="nota-color-dot selected" data-color="default" title="Predeterminado"></button>
+            <button type="button" class="nota-color-dot" data-color="yellow" title="Amarillo"></button>
+            <button type="button" class="nota-color-dot" data-color="blue" title="Azul"></button>
+            <button type="button" class="nota-color-dot" data-color="green" title="Verde"></button>
+            <button type="button" class="nota-color-dot" data-color="red" title="Rojo"></button>
+            <button type="button" class="nota-color-dot" data-color="purple" title="Morado"></button>
+          </div>
+        </div>
+        <input type="text" id="nota-titulo" class="nota-modal-title-input" placeholder="Título de la nota..." maxlength="200" autocomplete="off">
+        <textarea id="nota-contenido" class="nota-modal-textarea" placeholder="Escribe tu anotación aquí..." rows="8"></textarea>
+        <div class="nota-modal-footer">
+          <label class="nota-pin-label" for="nota-fijada">
+            <i class="fa-solid fa-thumbtack"></i> Fijar nota
+            <input type="checkbox" id="nota-fijada" style="margin-left: 6px; width:auto;">
+          </label>
+          <button type="submit" class="btn-primary" style="width: auto; padding: 10px 24px;">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Confirmación personalizada -->
+  <div id="confirm-modal" class="modal-overlay" style="display:none;">
+    <div class="confirm-modal-card">
+      <div class="confirm-modal-icon-wrap">
+        <i class="fa-solid fa-triangle-exclamation confirm-modal-icon"></i>
+      </div>
+      <p id="confirm-modal-msg" class="confirm-modal-msg">¿Estás seguro?</p>
+      <div class="confirm-modal-actions">
+        <button id="confirm-modal-cancel" class="confirm-btn-cancel">Cancelar</button>
+        <button id="confirm-modal-ok" class="confirm-btn-ok">Eliminar</button>
+      </div>
     </div>
   </div>
 

@@ -329,6 +329,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderServices();
       } else if (viewId === 'techs-view') {
         renderTechs();
+      } else if (viewId === 'notas-view') {
+        if (typeof renderNotas === 'function') renderNotas();
       }
     }
   }
@@ -3937,3 +3939,246 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// ============================================================================
+// MÓDULO DE NOTAS
+// ============================================================================
+
+(function () {
+  let allNotas = [];
+  let notaColorSeleccionado = 'default';
+
+  const notaModal      = document.getElementById('nota-modal');
+  const notaForm       = document.getElementById('nota-form');
+  const notaIdInput    = document.getElementById('nota-id');
+  const notaTituloInput= document.getElementById('nota-titulo');
+  const notaContenido  = document.getElementById('nota-contenido');
+  const notaFijada     = document.getElementById('nota-fijada');
+  const notaModalTitle = document.getElementById('nota-modal-title');
+  const notaGrid       = document.getElementById('notas-grid');
+  const notaEmpty      = document.getElementById('notas-empty');
+  const notaCounter    = document.getElementById('notas-counter');
+  const notaSearch     = document.getElementById('notas-search');
+  const addNotaBtn     = document.getElementById('add-nota-btn');
+
+  // ── Helpers de fecha ──────────────────────────────────────────────────────
+  function formatNotaDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // ── Render de tarjetas ────────────────────────────────────────────────────
+  window.renderNotas = async function () {
+    try {
+      allNotas = await window.api.getNotas();
+    } catch (e) {
+      allNotas = [];
+    }
+    renderNotasGrid(allNotas);
+  };
+
+  function renderNotasGrid(notas) {
+    const termino = notaSearch ? notaSearch.value.trim().toLowerCase() : '';
+    const filtered = termino
+      ? notas.filter(n =>
+          (n.titulo || '').toLowerCase().includes(termino) ||
+          (n.contenido || '').toLowerCase().includes(termino)
+        )
+      : notas;
+
+    if (notaCounter) {
+      notaCounter.textContent = filtered.length === 1 ? '1 nota' : `${filtered.length} notas`;
+    }
+
+    if (!notaGrid) return;
+    notaGrid.innerHTML = '';
+
+    if (filtered.length === 0) {
+      if (notaEmpty) notaEmpty.style.display = 'flex';
+      return;
+    }
+    if (notaEmpty) notaEmpty.style.display = 'none';
+
+    filtered.forEach(nota => {
+      const card = document.createElement('div');
+      card.className = 'nota-card';
+      card.dataset.color = nota.color || 'default';
+      card.dataset.id = nota.id;
+
+      const tituloText = nota.titulo && nota.titulo.trim() ? nota.titulo : 'Sin título';
+      const esSinTitulo = !nota.titulo || !nota.titulo.trim();
+
+      card.innerHTML = `
+        <div class="nota-card-header">
+          <span class="nota-card-titulo${esSinTitulo ? ' sin-titulo' : ''}">${escapeHtml(tituloText)}</span>
+          ${nota.fijada ? '<i class="fa-solid fa-thumbtack nota-pin-badge"></i>' : ''}
+        </div>
+        ${nota.contenido ? `<div class="nota-card-contenido">${escapeHtml(nota.contenido)}</div>` : ''}
+        <div class="nota-card-footer">
+          <span class="nota-card-date">${formatNotaDate(nota.fecha_actualizacion || nota.fecha_creacion)}</span>
+          <div class="nota-card-actions">
+            <button class="nota-action-btn pin" title="${nota.fijada ? 'Desfijar' : 'Fijar'}" data-action="pin">
+              <i class="fa-solid fa-thumbtack"></i>
+            </button>
+            <button class="nota-action-btn edit" title="Editar" data-action="edit">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="nota-action-btn delete" title="Eliminar" data-action="delete">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Clic en la tarjeta → editar
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.nota-card-actions')) return;
+        openNotaModal(nota);
+      });
+
+      // Botones de acción
+      card.querySelector('[data-action="pin"]').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.toggleNotaFijada(nota.id);
+        await window.renderNotas();
+      });
+
+      card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openNotaModal(nota);
+      });
+
+      // Botón eliminar con confirmación inline de 2 pasos
+      const deleteBtn = card.querySelector('[data-action="delete"]');
+      let deleteConfirmTimer = null;
+
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+
+        if (deleteBtn.dataset.confirming === 'true') {
+          // Segundo click — confirmar eliminación
+          clearTimeout(deleteConfirmTimer);
+          deleteBtn.dataset.confirming = 'false';
+          deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+          deleteBtn.style.color = '';
+          deleteBtn.style.borderColor = '';
+          deleteBtn.style.background = '';
+          await window.api.deleteNota(nota.id);
+          await window.renderNotas();
+        } else {
+          // Primer click — pedir confirmación visual
+          deleteBtn.dataset.confirming = 'true';
+          deleteBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+          deleteBtn.style.color = '#f87171';
+          deleteBtn.style.borderColor = 'rgba(239,68,68,0.5)';
+          deleteBtn.style.background = 'rgba(239,68,68,0.12)';
+          deleteBtn.title = 'Clic de nuevo para confirmar';
+
+          // Resetear después de 2.5s si no confirma
+          deleteConfirmTimer = setTimeout(() => {
+            deleteBtn.dataset.confirming = 'false';
+            deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            deleteBtn.style.color = '';
+            deleteBtn.style.borderColor = '';
+            deleteBtn.style.background = '';
+            deleteBtn.title = 'Eliminar';
+          }, 2500);
+        }
+      });
+
+
+      notaGrid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  function openNotaModal(nota = null) {
+    if (!notaModal) return;
+
+    if (nota) {
+      notaModalTitle.textContent = 'Editar Nota';
+      notaIdInput.value = nota.id;
+      notaTituloInput.value = nota.titulo || '';
+      notaContenido.value = nota.contenido || '';
+      notaFijada.checked = !!nota.fijada;
+      notaColorSeleccionado = nota.color || 'default';
+    } else {
+      notaModalTitle.textContent = 'Nueva Nota';
+      notaIdInput.value = '';
+      notaTituloInput.value = '';
+      notaContenido.value = '';
+      notaFijada.checked = false;
+      notaColorSeleccionado = 'default';
+    }
+
+    // Actualizar selector de color
+    document.querySelectorAll('.nota-color-dot').forEach(dot => {
+      dot.classList.toggle('selected', dot.dataset.color === notaColorSeleccionado);
+    });
+
+    notaModal.style.display = 'flex';
+    setTimeout(() => notaTituloInput.focus(), 80);
+  }
+
+  function closeNotaModal() {
+    if (notaModal) notaModal.style.display = 'none';
+  }
+
+  // ── Eventos ───────────────────────────────────────────────────────────────
+  if (addNotaBtn) {
+    addNotaBtn.addEventListener('click', () => openNotaModal());
+  }
+
+  if (notaModal) {
+    // Cerrar al click en overlay
+    notaModal.addEventListener('click', (e) => {
+      if (e.target === notaModal) closeNotaModal();
+    });
+
+    // Botón ×
+    const closeBtns = notaModal.querySelectorAll('.nota-modal-close, .modal-close-btn');
+    closeBtns.forEach(btn => btn.addEventListener('click', closeNotaModal));
+  }
+
+  // Selector de color
+  document.querySelectorAll('.nota-color-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      notaColorSeleccionado = dot.dataset.color;
+      document.querySelectorAll('.nota-color-dot').forEach(d => d.classList.remove('selected'));
+      dot.classList.add('selected');
+    });
+  });
+
+  // Guardar nota
+  if (notaForm) {
+    notaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = notaIdInput.value ? parseInt(notaIdInput.value) : null;
+      const nota = {
+        id,
+        titulo: notaTituloInput.value.trim(),
+        contenido: notaContenido.value.trim(),
+        color: notaColorSeleccionado,
+        fijada: notaFijada.checked
+      };
+
+      const res = await window.api.saveNota(nota);
+      if (res && res.success !== false) {
+        closeNotaModal();
+        await window.renderNotas();
+      }
+    });
+  }
+
+  // Buscador en tiempo real
+  if (notaSearch) {
+    notaSearch.addEventListener('input', () => renderNotasGrid(allNotas));
+  }
+
+})();

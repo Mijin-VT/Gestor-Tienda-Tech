@@ -2073,6 +2073,94 @@ ipcMain.handle('db:delete-whatsapp-message', async (event, msgId) => {
   }
 });
 
+// ============================================================================
+// NOTAS INTERNAS
+// ============================================================================
+
+// Crear tabla de notas si no existe (se ejecuta en el primer handler)
+async function ensureNotasTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS notas (
+      id SERIAL PRIMARY KEY,
+      titulo VARCHAR(200) NOT NULL DEFAULT 'Sin título',
+      contenido TEXT,
+      color VARCHAR(20) DEFAULT 'default',
+      fijada BOOLEAN DEFAULT FALSE,
+      fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+ipcMain.handle('db:get-notas', async () => {
+  try {
+    await ensureNotasTable();
+    const result = await db.query(`
+      SELECT * FROM notas ORDER BY fijada DESC, fecha_actualizacion DESC
+    `);
+    return result.recordset;
+  } catch (err) {
+    console.error('Error al obtener notas:', err);
+    return [];
+  }
+});
+
+ipcMain.handle('db:save-nota', async (event, nota) => {
+  try {
+    await ensureNotasTable();
+    if (nota.id) {
+      await db.query(`
+        UPDATE notas SET titulo = @titulo, contenido = @contenido, color = @color,
+          fijada = @fijada, fecha_actualizacion = CURRENT_TIMESTAMP
+        WHERE id = @id
+      `, {
+        titulo: nota.titulo || 'Sin título',
+        contenido: nota.contenido || '',
+        color: nota.color || 'default',
+        fijada: nota.fijada || false,
+        id: nota.id
+      });
+      return { success: true, id: nota.id };
+    } else {
+      const result = await db.query(`
+        INSERT INTO notas (titulo, contenido, color, fijada)
+        VALUES (@titulo, @contenido, @color, @fijada) RETURNING id
+      `, {
+        titulo: nota.titulo || 'Sin título',
+        contenido: nota.contenido || '',
+        color: nota.color || 'default',
+        fijada: nota.fijada || false
+      });
+      return { success: true, id: result.recordset[0].id };
+    }
+  } catch (err) {
+    console.error('Error al guardar nota:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('db:delete-nota', async (event, id) => {
+  try {
+    await db.query(`DELETE FROM notas WHERE id = @id`, { id });
+    return { success: true };
+  } catch (err) {
+    console.error('Error al eliminar nota:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('db:toggle-nota-fijada', async (event, id) => {
+  try {
+    await db.query(`
+      UPDATE notas SET fijada = NOT fijada, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = @id
+    `, { id });
+    return { success: true };
+  } catch (err) {
+    console.error('Error al fijar nota:', err);
+    return { success: false, message: err.message };
+  }
+});
+
 // 30. Abrir Archivo Local
 ipcMain.handle('app:open-file', async (event, filePath) => {
   try {
