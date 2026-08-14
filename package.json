@@ -5,14 +5,16 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:linux": "electron-builder --linux"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^43.2.0"
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc14",
@@ -22,5 +24,16 @@
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "com.tienda.gestor",
+    "productName": "Gestor Tienda Tech",
+    "linux": {
+      "target": [
+        "tar.gz"
+      ],
+      "icon": "build/icon.png",
+      "category": "Office"
+    }
   }
 }

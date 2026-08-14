@@ -1,0 +1,59 @@
+<project>
+    <shortName>gestortienda</shortName>
+    <fullName>Gestor Tienda Tech</fullName>
+    <version>1.0.0</version>
+    <vendor>Mijin-VT</vendor>
+    <leftImage>d:/Desktop/AGENTES/GESTION_ELECTRONICA/build/icon.png</leftImage>
+    <logoImage>d:/Desktop/AGENTES/GESTION_ELECTRONICA/build/icon.png</logoImage>
+    <outputDirectory>d:/Desktop/AGENTES/GESTION_ELECTRONICA/dist</outputDirectory>
+    <installerFilename>Instalador_GestorTienda</installerFilename>
+    <generateNativePackage>1</generateNativePackage>
+    <nativePackageFormat>deb</nativePackageFormat>
+    <nativePackageName>gestion-electronica</nativePackageName>
+    <componentList>
+        <component>
+            <name>default</name>
+            <description>Archivos Principales</description>
+            <canBeEdited>1</canBeEdited>
+            <selected>1</selected>
+            <show>1</show>
+            <folderList>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfiles</name>
+                    <platforms>all</platforms>
+                    <distributionFileList>
+                        <distributionDirectory>
+                            <origin>d:/Desktop/AGENTES/GESTION_ELECTRONICA/dist/linux-unpacked</origin>
+                        </distributionDirectory>
+                        <distributionFile>
+                            <origin>d:/Desktop/AGENTES/GESTION_ELECTRONICA/build/icon.png</origin>
+                        </distributionFile>
+                    </distributionFileList>
+                    <shortcutList>
+                        <shortcut>
+                            <comment>Gestor Tienda Tech</comment>
+                            <exec>${installdir}/gestion_electronica</exec>
+                            <icon>${installdir}/icon.png</icon>
+                            <name>Gestor Tienda Tech</name>
+                            <path>${installdir}</path>
+                            <platforms>all</platforms>
+                            <runAsAdmin>0</runAsAdmin>
+                            <runInTerminal>0</runInTerminal>
+                            <windowsExec>${installdir}/gestion_electronica</windowsExec>
+                            <windowsPath>${installdir}</windowsPath>
+                        </shortcut>
+                    </shortcutList>
+                </folder>
+            </folderList>
+        </component>
+    </componentList>
+    <postInstallationActionList>
+        <showInfo>
+            <text>¡Instalación completada con éxito!
+
+Para que la aplicación funcione correctamente, recuerde tener PostgreSQL ejecutándose en el puerto 5432 con la contraseña por defecto 'admin'.</text>
+        </showInfo>
+    </postInstallationActionList>
+</project>
