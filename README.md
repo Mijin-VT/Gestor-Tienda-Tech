@@ -67,41 +67,108 @@ Para sistemas basados en Debian (Ubuntu, Linux Mint, Pop!_OS, etc.), proporciona
 🔗 **[Descargar Instalador V1.0 para Linux (.deb)](https://github.com/Mijin-VT/Gestor-Tienda-Tech/releases/download/V1.0/gestion_electronica-1.0.0.deb)**
 
 **Pasos de instalación en Linux:**
-1. **Base de Datos:** Asegúrate de tener instalado **PostgreSQL** y ejecutándose en el puerto `5432` (con contraseña por defecto `admin`).
+1. **Configurar PostgreSQL:** Sigue la [Guía Paso a Paso de PostgreSQL](#-guía-paso-a-paso-de-instalación-y-configuración-de-postgresql).
 2. **Instalar el Paquete:** Dale doble clic al archivo `.deb` descargado para abrirlo con el Centro de Software (o gestor de paquetes de tu sistema) y presiona "Instalar".
    - *Alternativa por terminal:* `sudo dpkg -i gestion_electronica-1.0.0.deb` (seguido de `sudo apt install -f` si hiciera falta alguna dependencia).
 3. **Ejecutar:** Búscalo en tu menú de aplicaciones como "Gestor Tienda Tech" y ábrelo.
 
 ---
 
-### Prerrequisitos (Instalación Manual o Desarrollo)
-1. **Node.js** (versión 16+ recomendada).
-2. **PostgreSQL** instalado (localmente en el puerto 5432).
+## 🗄️ Guía Paso a Paso: Instalación y Configuración de PostgreSQL
 
-### Pasos
-1. **Clonar el repositorio:**
+Para que el sistema funcione correctamente, requiere una instancia de **PostgreSQL** activa. A continuación se detallan los pasos exactos:
+
+### 🐧 En Linux (Ubuntu / Debian / Derivados)
+
+1. **Instalar PostgreSQL:**
    ```bash
-   git clone <url-del-repositorio>
-   cd GESTION_ELECTRONICA
+   sudo apt update
+   sudo apt install postgresql postgresql-contrib -y
    ```
 
-2. **Instalar dependencias:**
+2. **Iniciar y habilitar el servicio de PostgreSQL:**
+   ```bash
+   sudo systemctl start postgresql
+   sudo systemctl enable postgresql
+   ```
+
+3. **Configurar la contraseña del usuario `postgres`:**
+   Ingresa a la consola de PostgreSQL y define la contraseña (por defecto `admin123`):
+   ```bash
+   sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'admin123';"
+   ```
+
+4. **Crear la base de datos `TERCERLED`:**
+   ```bash
+   sudo -u postgres psql -c "CREATE DATABASE \"TERCERLED\";"
+   ```
+
+5. **Restaurar el esquema y tablas iniciales:**
+   Ejecuta el archivo de esquema `base_de_datos_pg.sql` incluido en el proyecto:
+   ```bash
+   sudo -u postgres psql -d TERCERLED -f base_de_datos_pg.sql
+   ```
+
+---
+
+### 🪟 En Windows
+
+1. **Descargar el Instalador Oficial:**
+   Descarga PostgreSQL desde la página oficial: [https://www.postgresql.org/download/windows/](https://www.postgresql.org/download/windows/) (se recomienda versión 14, 15 o 16).
+
+2. **Instalación:**
+   * Ejecuta el instalador descargado.
+   * Cuando el instalador te solicite la **contraseña del superusuario `postgres`**, ingresa: `admin123` (o la contraseña de tu preferencia).
+   * Mantén el puerto predeterminado: `5432`.
+   * Finaliza la instalación (no es necesario instalar componentes adicionales de Stack Builder).
+
+3. **Crear la Base de Datos con pgAdmin o SQL Shell (psql):**
+   * Abre **SQL Shell (psql)** desde el menú de inicio y presiona *Enter* para aceptar los valores predeterminados (Server: localhost, Database: postgres, Port: 5432, Username: postgres).
+   * Escribe tu contraseña y presiona *Enter*.
+   * Ejecuta los siguientes comandos:
+     ```sql
+     CREATE DATABASE "TERCERLED";
+     \c TERCERLED
+     \i 'd:/Desktop/AGENTES/GESTION_ELECTRONICA/base_de_datos_pg.sql'
+     ```
+
+---
+
+### 🔧 Archivo de Configuración de Conexión (`db_config.json`)
+
+Si instalaste PostgreSQL con un usuario, contraseña o puerto diferente, puedes personalizar la conexión editando el archivo `db_config.json` en la raíz de la aplicación:
+
+```json
+{
+  "user": "postgres",
+  "host": "localhost",
+  "database": "TERCERLED",
+  "password": "tu_contraseña_aqui",
+  "port": 5432
+}
+```
+
+---
+
+### 💻 Instalación Manual para Desarrollo (Desde Código Fuente)
+
+1. **Prerrequisitos:** Node.js (v16+) y PostgreSQL instalado y en ejecución.
+2. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/Mijin-VT/Gestor-Tienda-Tech.git
+   cd Gestor-Tienda-Tech
+   ```
+3. **Instalar dependencias de Node.js:**
    ```bash
    npm install
    ```
-
-3. **Base de Datos:**
-   * Asegúrate de tener ejecutando PostgreSQL en el puerto 5432.
-   * Ejecuta el instalador o los scripts SQL proporcionados para inicializar la base de datos `tienda` y sus tablas.
-
-4. **Ejecutar la aplicación (Modo Desarrollo):**
+4. **Ejecutar en modo desarrollo:**
    ```bash
    npm start
    ```
-
-5. **Credenciales por defecto:**
-   * Al iniciar el sistema por primera vez, el usuario es **admin** y la contraseña es **admin**.
-   * Puedes cambiar estas credenciales o crear cuentas nuevas en el apartado **Gestión de Usuarios del Sistema** de la aplicación.
+5. **Credenciales de inicio de sesión por defecto:**
+   * **Usuario:** `admin`
+   * **Contraseña:** `admin`
 
 ---
 
