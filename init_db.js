@@ -301,9 +301,10 @@ async function initializeTablesAndSeed(config) {
 
       CREATE TABLE IF NOT EXISTS notas (
         id SERIAL PRIMARY KEY,
-        titulo VARCHAR(100) NOT NULL,
-        contenido TEXT NOT NULL,
-        color VARCHAR(20) DEFAULT 'yellow',
+        titulo VARCHAR(200) NOT NULL DEFAULT 'Sin título',
+        contenido TEXT,
+        color VARCHAR(20) DEFAULT 'default',
+        fijada BOOLEAN DEFAULT FALSE,
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

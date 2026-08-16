@@ -2096,6 +2096,11 @@ async function ensureNotasTable() {
       fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  try {
+    await db.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS fijada BOOLEAN DEFAULT FALSE;`);
+    await db.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT 'default';`);
+    await db.query(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+  } catch (e) {}
 }
 
 ipcMain.handle('db:get-notas', async () => {
