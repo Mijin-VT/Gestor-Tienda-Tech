@@ -1,10 +1,10 @@
 @echo off
-title Instalador - tienda
+title Instalador - Gestor Tienda Tech
 echo ====================================================================
-echo             Instalador de Dependencias - Tienda
+echo             Instalador de Dependencias y Base de Datos
 echo ====================================================================
 echo.
-echo 1. Instalando modulos de Node.js y dependencias de Electron (pg, bcryptjs)...
+echo 1. Instalando modulos de Node.js y dependencias de Electron...
 call npm install
 if %errorlevel% neq 0 (
     echo.
@@ -16,15 +16,30 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ====================================================================
-echo         �Dependencias de Node.js instaladas correctamente!
+echo 2. Verificando, Instalando y Configurando PostgreSQL...
 echo ====================================================================
 echo.
-echo CONFIGURACION DE LA BASE DE DATOS POSTGRESQL (TIENDA):
-echo La base de datos tienda ya ha sido creada e inicializada en tu
-echo servidor local de PostgreSQL (puerto 5432) con la contrasena 'admin'.
+powershell -ExecutionPolicy Bypass -File setup_postgres.ps1
+if %errorlevel% neq 0 (
+    echo.
+    echo [ADVERTENCIA] Ocurrio un aviso durante la configuracion automatica de PostgreSQL.
+    echo Si no tienes PostgreSQL instalado, puedes descargarlo desde:
+    echo https://www.postgresql.org/download/windows/
+    echo.
+) else (
+    echo.
+    echo [OK] PostgreSQL y Base de Datos listos para operar.
+    echo Usuario por defecto: admin
+    echo Clave por defecto: admin123
+)
+
 echo.
-echo Si deseas cambiar el host o el puerto, edita el archivo 'db_config.json'.
+echo ====================================================================
+echo                  Instalacion Completada
+echo ====================================================================
 echo.
-echo Todo listo. Ahora puedes iniciar la aplicacion usando "INICIAR.bat".
+echo Si deseas cambiar el host, usuario, clave o puerto, edita 'db_config.json'.
+echo.
+echo Ahora puedes iniciar la aplicacion usando "INICIAR.bat".
 echo.
 pause

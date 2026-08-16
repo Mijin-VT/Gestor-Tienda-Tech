@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const db = require('./database');
+const { initDB } = require('./init_db');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 
@@ -430,7 +431,12 @@ ipcMain.handle('db:get-whatsapp-history', async () => {
 });
 
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try {
+    await initDB();
+  } catch (e) {
+    console.error('Aviso al auto-inicializar base de datos:', e.message);
+  }
   createWindow();
   startIncomingMessagePolling();
 

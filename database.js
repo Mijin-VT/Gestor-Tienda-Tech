@@ -9,7 +9,8 @@ function getConfig() {
   const configPath = path.join(__dirname, 'db_config.json');
   if (fs.existsSync(configPath)) {
     try {
-      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const raw = fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, '');
+      return JSON.parse(raw);
     } catch (e) {
       console.error('Error al leer db_config.json:', e);
     }
@@ -18,7 +19,7 @@ function getConfig() {
   return {
     user: 'postgres',
     host: 'localhost',
-    database: 'NOMBRE_DE_TIENDA',
+    database: 'TIENDA',
     password: 'admin123',
     port: 5432
   };
