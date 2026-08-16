@@ -23,8 +23,7 @@ function getConfig() {
 }
 
 async function ensureDatabaseExists(config) {
-  // Conectar a la base de datos de administración 'postgres'
-  const adminClient = new Client({
+  let adminClient = new Client({
     user: config.user,
     host: config.host,
     password: config.password,
@@ -34,6 +33,35 @@ async function ensureDatabaseExists(config) {
 
   try {
     await adminClient.connect();
+  } catch (connectErr) {
+    if (process.platform === 'win32') {
+      const scriptPath = path.join(__dirname, 'setup_postgres.ps1');
+      if (fs.existsSync(scriptPath)) {
+        console.log('PostgreSQL no responde en puerto 5432. Iniciando verificación/instalador automático...');
+        try {
+          const { execSync } = require('child_process');
+          execSync(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`, { stdio: 'inherit' });
+          adminClient = new Client({
+            user: config.user,
+            host: config.host,
+            password: config.password,
+            port: config.port,
+            database: 'postgres'
+          });
+          await adminClient.connect();
+        } catch (setupErr) {
+          console.error('Error durante la auto-instalación de PostgreSQL:', setupErr.message);
+          throw connectErr;
+        }
+      } else {
+        throw connectErr;
+      }
+    } else {
+      throw connectErr;
+    }
+  }
+
+  try {
     const res = await adminClient.query(
       'SELECT 1 FROM pg_database WHERE datname = $1',
       [config.database]
@@ -41,7 +69,6 @@ async function ensureDatabaseExists(config) {
 
     if (res.rows.length === 0) {
       console.log(`Creando base de datos "${config.database}"...`);
-      // CREATE DATABASE no admite parámetros posicionales directos para el identificador
       await adminClient.query(`CREATE DATABASE "${config.database}"`);
       console.log(`Base de datos "${config.database}" creada exitosamente.`);
     } else {
@@ -51,7 +78,7 @@ async function ensureDatabaseExists(config) {
     console.error('Error al verificar/crear la base de datos:', err.message);
     throw err;
   } finally {
-    await adminClient.end();
+    try { await adminClient.end(); } catch (e) {}
   }
 }
 

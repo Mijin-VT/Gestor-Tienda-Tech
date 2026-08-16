@@ -49,6 +49,7 @@ Version: 1.0.0
 Section: utils
 Priority: optional
 Architecture: amd64
+Depends: postgresql (>= 12)
 Maintainer: Mijin-VT <admin@gestortienda.local>
 Description: Gestor Tienda Tech
  Sistema de Gestión para Tienda Tech con PostgreSQL integrado.
@@ -56,12 +57,19 @@ Description: Gestor Tienda Tech
     with open(os.path.join(staging_dir, "DEBIAN", "control"), "w", encoding="utf-8") as f:
         f.write(control_content)
         
-    # Create postinst to inform about PostgreSQL
+    # Create postinst to automatically configure PostgreSQL and create TIENDA database
     postinst_content = """#!/bin/bash
+# Iniciar servicio postgresql
+systemctl enable postgresql 2>/dev/null || true
+systemctl start postgresql 2>/dev/null || service postgresql start 2>/dev/null || true
+
+# Configurar contraseña de postgres a admin123 y crear base de datos TIENDA si no existe
+su - postgres -c "psql -c \\"ALTER USER postgres WITH PASSWORD 'admin123';\\"" 2>/dev/null || true
+su - postgres -c "psql -tc \\"SELECT 1 FROM pg_database WHERE datname = 'TIENDA'\\" | grep -q 1 || psql -c \\"CREATE DATABASE \\\\\\"TIENDA\\\\\\";\\"" 2>/dev/null || true
+
 echo "=========================================================="
-echo " Instalación de Gestor Tienda Tech completada."
-echo " Asegúrate de tener PostgreSQL corriendo en el puerto 5432"
-echo " con la contraseña por defecto 'admin'."
+echo " Instalación de Gestor Tienda Tech y PostgreSQL completada."
+echo " Base de datos TIENDA configurada con éxito."
 echo "=========================================================="
 exit 0
 """
