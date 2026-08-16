@@ -2107,9 +2107,10 @@ ipcMain.handle('db:get-notas', async () => {
   try {
     await ensureNotasTable();
     const result = await db.query(`
-      SELECT * FROM notas ORDER BY fijada DESC, fecha_actualizacion DESC
+      SELECT id, titulo, contenido, color, COALESCE(fijada, FALSE) AS fijada, fecha_creacion, fecha_actualizacion
+      FROM notas ORDER BY fijada DESC, fecha_actualizacion DESC
     `);
-    return result.recordset;
+    return result.recordset || [];
   } catch (err) {
     console.error('Error al obtener notas:', err);
     return [];
@@ -2119,6 +2120,7 @@ ipcMain.handle('db:get-notas', async () => {
 ipcMain.handle('db:save-nota', async (event, nota) => {
   try {
     await ensureNotasTable();
+    const esFijada = nota.fijada === true || nota.fijada === 'true' || nota.fijada === 1;
     if (nota.id) {
       await db.query(`
         UPDATE notas SET titulo = @titulo, contenido = @contenido, color = @color,
@@ -2128,10 +2130,10 @@ ipcMain.handle('db:save-nota', async (event, nota) => {
         titulo: nota.titulo || 'Sin título',
         contenido: nota.contenido || '',
         color: nota.color || 'default',
-        fijada: nota.fijada || false,
-        id: nota.id
+        fijada: esFijada,
+        id: parseInt(nota.id, 10)
       });
-      return { success: true, id: nota.id };
+      return { success: true, id: parseInt(nota.id, 10) };
     } else {
       const result = await db.query(`
         INSERT INTO notas (titulo, contenido, color, fijada)
@@ -2140,9 +2142,10 @@ ipcMain.handle('db:save-nota', async (event, nota) => {
         titulo: nota.titulo || 'Sin título',
         contenido: nota.contenido || '',
         color: nota.color || 'default',
-        fijada: nota.fijada || false
+        fijada: esFijada
       });
-      return { success: true, id: result.recordset[0].id };
+      const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;
+      return { success: true, id: newId };
     }
   } catch (err) {
     console.error('Error al guardar nota:', err);
@@ -2152,7 +2155,7 @@ ipcMain.handle('db:save-nota', async (event, nota) => {
 
 ipcMain.handle('db:delete-nota', async (event, id) => {
   try {
-    await db.query(`DELETE FROM notas WHERE id = @id`, { id });
+    await db.query(`DELETE FROM notas WHERE id = @id`, { id: parseInt(id, 10) });
     return { success: true };
   } catch (err) {
     console.error('Error al eliminar nota:', err);
@@ -2163,8 +2166,8 @@ ipcMain.handle('db:delete-nota', async (event, id) => {
 ipcMain.handle('db:toggle-nota-fijada', async (event, id) => {
   try {
     await db.query(`
-      UPDATE notas SET fijada = NOT fijada, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = @id
-    `, { id });
+      UPDATE notas SET fijada = NOT COALESCE(fijada, FALSE), fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = @id
+    `, { id: parseInt(id, 10) });
     return { success: true };
   } catch (err) {
     console.error('Error al fijar nota:', err);

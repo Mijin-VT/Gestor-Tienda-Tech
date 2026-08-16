@@ -8,6 +8,9 @@ def create_deb():
     staging_dir = os.path.join(dist_dir, "deb_staging")
     unpacked_dir = os.path.join(dist_dir, "linux-unpacked")
     
+    print("1. Recompilando sources de Linux con electron-builder...")
+    subprocess.run("npm.cmd run build:linux", cwd=base_dir, shell=True, check=True)
+    
     # Clean staging
     if os.path.exists(staging_dir):
         shutil.rmtree(staging_dir)
