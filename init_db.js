@@ -396,6 +396,29 @@ async function initializeTablesAndSeed(config) {
       console.log('Usuario admin creado.');
     }
 
+    // 5. Modelo predeterminado de Nota de Venta si no hay modelos
+    const modelCheck = await pool.query('SELECT COUNT(*) AS total FROM modelos_documentos');
+    if (parseInt(modelCheck.rows[0].total, 10) === 0) {
+      const templatePath = path.join(__dirname, 'renderer', 'plantilla_nota_venta.jpg');
+      if (fs.existsSync(templatePath)) {
+        console.log('Añadiendo modelo de Nota de Venta iZASKUN por defecto...');
+        const imgData = 'data:image/jpeg;base64,' + fs.readFileSync(templatePath).toString('base64');
+        await pool.query(`
+          INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, es_predeterminado)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [
+          'Nota de Venta iZASKUN',
+          'Nota de Venta',
+          'Plantilla oficial preimpresa con logotipo iZASKUN y Maxi Tiendas',
+          'plantilla_nota_venta.jpg',
+          'image/jpeg',
+          imgData,
+          true
+        ]);
+        console.log('Modelo de Nota de Venta predeterminado registrado.');
+      }
+    }
+
     console.log('Base de datos inicializada con éxito.');
   } catch (err) {
     console.error('Error al inicializar tablas y datos:', err);
