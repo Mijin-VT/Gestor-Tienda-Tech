@@ -4632,11 +4632,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const offsetXInput   = document.getElementById('grid-img-offset-x');
+  const offsetYInput   = document.getElementById('grid-img-offset-y');
+
+  let currentOffsetX = 0;
+  let currentOffsetY = 0;
+
+  function updateImagePosition() {
+    if (!excelBgImg) return;
+    const topBase = 24; // Altura de la cabecera A, B, C...
+    const leftBase = 34; // Ancho de la cabecera 1, 2, 3...
+    excelBgImg.style.top = `${topBase + currentOffsetY}px`;
+    excelBgImg.style.left = `${leftBase + currentOffsetX}px`;
+  }
+
+  if (offsetXInput) {
+    offsetXInput.addEventListener('input', (e) => {
+      currentOffsetX = parseInt(e.target.value, 10) || 0;
+      updateImagePosition();
+    });
+  }
+
+  if (offsetYInput) {
+    offsetYInput.addEventListener('input', (e) => {
+      currentOffsetY = parseInt(e.target.value, 10) || 0;
+      updateImagePosition();
+    });
+  }
+
   if (btnResetGrid) {
     btnResetGrid.addEventListener('click', () => {
       defaultRowHeight = 26;
       defaultColWidth = 55;
       currentOpacity = 0.45;
+      currentOffsetX = 0;
+      currentOffsetY = 0;
       colWidths = {};
       rowHeights = {};
       cellContents = {};
@@ -4647,7 +4677,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (colWidthVal) colWidthVal.textContent = '55px';
       if (opacitySlider) opacitySlider.value = 0.45;
       if (opacityVal) opacityVal.textContent = '45%';
-      if (excelBgImg) excelBgImg.style.opacity = 0.45;
+      if (offsetXInput) offsetXInput.value = 0;
+      if (offsetYInput) offsetYInput.value = 0;
+      if (excelBgImg) {
+        excelBgImg.style.opacity = 0.45;
+        updateImagePosition();
+      }
       buildExcelGridOverlay();
     });
   }

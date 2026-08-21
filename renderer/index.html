@@ -1952,14 +1952,20 @@
 
                     <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
                       <span><i class="fa-solid fa-arrows-up-down"></i> Altura Filas:</span>
-                      <input type="range" id="grid-row-height" min="18" max="45" step="1" value="26" style="width: 80px; accent-color: var(--success);">
-                      <span id="grid-row-height-val" style="font-weight: 600; color: var(--text-main); width: 30px;">26px</span>
+                      <input type="range" id="grid-row-height" min="18" max="45" step="1" value="26" style="width: 75px; accent-color: var(--success);">
+                      <span id="grid-row-height-val" style="font-weight: 600; color: var(--text-main); width: 28px;">26px</span>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
                       <span><i class="fa-solid fa-arrows-left-right"></i> Ancho Col:</span>
-                      <input type="range" id="grid-col-width" min="30" max="100" step="2" value="55" style="width: 80px; accent-color: var(--warning);">
-                      <span id="grid-col-width-val" style="font-weight: 600; color: var(--text-main); width: 35px;">55px</span>
+                      <input type="range" id="grid-col-width" min="30" max="100" step="2" value="55" style="width: 75px; accent-color: var(--warning);">
+                      <span id="grid-col-width-val" style="font-weight: 600; color: var(--text-main); width: 32px;">55px</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-muted);">
+                      <span>Posición X/Y:</span>
+                      <input type="number" id="grid-img-offset-x" value="0" style="width: 50px; height: 26px; padding: 2px 4px; font-size: 0.8rem; background: var(--bg-primary); color: #fff; border: 1px solid var(--card-border); border-radius: 4px;" title="Desplazamiento horizontal (X)">
+                      <input type="number" id="grid-img-offset-y" value="0" style="width: 50px; height: 26px; padding: 2px 4px; font-size: 0.8rem; background: var(--bg-primary); color: #fff; border: 1px solid var(--card-border); border-radius: 4px;" title="Desplazamiento vertical (Y)">
                     </div>
 
                     <button type="button" id="btn-reset-grid-calib" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.78rem; margin: 0;">
