@@ -4206,6 +4206,46 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedFileName = '';
   let selectedFileType = '';
 
+  // Configuración predeterminada de la cuadrícula interactiva tipo Excel
+  let defaultGridConfig = {
+    top: 31,     // Posición vertical (%) sobre la imagen
+    left: 3,     // Posición horizontal (%)
+    width: 94,   // Ancho relativo (%)
+    rows: 4,     // Número inicial de filas
+    cols: 5,     // Número inicial de columnas
+    opacity: 55, // Opacidad inicial de la imagen (55% = semi-transparente)
+    columns: [
+      { letter: 'A', field: 'CANTIDAD', label: 'CANTIDAD', width: 12 },
+      { letter: 'B', field: 'CODIGO', label: 'CÓDIGO', width: 18 },
+      { letter: 'C', field: 'DESCRIPCION', label: 'DESCRIPCIÓN', width: 42 },
+      { letter: 'D', field: 'PRECIO_UNITARIO', label: 'V. UNITARIO', width: 14 },
+      { letter: 'E', field: 'TOTAL', label: 'V. TOTAL', width: 14 }
+    ]
+  };
+
+  let activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
+
+  // Datos de ejemplo para las filas tipo Excel
+  const sampleRowData = [
+    ['1', '00442-SC', 'COMPUERTA LOGICA AND TRIPLE 3-IN 14P DIP', '1.2599', '1.2599'],
+    ['2', '00440-SC', 'COMPUERTA LOGICA AND QUAD 14P DIP', '0.9099', '1.8198'],
+    ['25', '00050-CPD', 'RESISTENCIAS FIJAS R-1/4W 330 OHM', '0.0599', '1.4975'],
+    ['2', '00138-CPD', 'RESISTENCIAS FIJAS R-1/4W 4.7K OHM', '0.0499', '0.0998'],
+    ['3', '00760-FEL', 'SWITCH INTERRUPTOR TIPO DIP SWITCH 4 POS', '0.4599', '1.3797'],
+    ['1', '00303-CPD', 'CAPACITORES CE 0.1UF 50V', '0.1799', '0.1799'],
+    ['1', '00410-SC', 'TIMER OSCILADOR IC LM555CN/NTE955M 8P DIP', '0.3599', '0.3599'],
+    ['1', '00895-DE', 'LED 5MM NORMAL VERDE 2P', '0.1099', '0.1099']
+  ];
+
+  const FIELD_OPTIONS = [
+    { value: 'CANTIDAD', text: 'CANTIDAD' },
+    { value: 'CODIGO', text: 'CÓDIGO' },
+    { value: 'DESCRIPCION', text: 'DESCRIPCIÓN' },
+    { value: 'PRECIO_UNITARIO', text: 'VALOR UNITARIO' },
+    { value: 'TOTAL', text: 'VALOR TOTAL' },
+    { value: 'OTRO', text: 'OTRO CAMPO' }
+  ];
+
   const modelsModal       = document.getElementById('invoice-models-modal');
   const modelsGrid        = document.getElementById('models-grid');
   const modelsEmpty       = document.getElementById('models-empty-state');
@@ -4227,6 +4267,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelTypeSelect   = document.getElementById('model-type-select');
   const modelDescInput    = document.getElementById('model-desc-input');
   const modelIsDefault    = document.getElementById('model-is-default-check');
+
+  // Elementos de calibración y cuadrícula Excel
+  const calibrationPanel    = document.getElementById('model-calibration-panel');
+  const calibrationBgImg    = document.getElementById('model-calibration-bg-img');
+  const excelContainer      = document.getElementById('excel-overlay-container');
+  const excelHeaderRow      = document.getElementById('excel-grid-header-row');
+  const excelTbody          = document.getElementById('excel-grid-tbody');
+  const opacitySlider       = document.getElementById('model-opacity-slider');
+  const opacityValBadge     = document.getElementById('opacity-val-badge');
+  const rowCountBadge       = document.getElementById('grid-row-count-badge');
+  const colCountBadge       = document.getElementById('grid-col-count-badge');
+  const addRowBtn           = document.getElementById('grid-add-row-btn');
+  const removeRowBtn        = document.getElementById('grid-remove-row-btn');
+  const addColBtn           = document.getElementById('grid-add-col-btn');
+  const removeColBtn        = document.getElementById('grid-remove-col-btn');
+  const moveUpBtn           = document.getElementById('grid-move-up-btn');
+  const moveDownBtn         = document.getElementById('grid-move-down-btn');
+  const moveLeftBtn         = document.getElementById('grid-move-left-btn');
+  const moveRightBtn        = document.getElementById('grid-move-right-btn');
+  const resetPosBtn         = document.getElementById('grid-reset-pos-btn');
 
   // Lightbox
   const lightboxModal     = document.getElementById('model-lightbox-modal');
@@ -4254,6 +4314,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'otro';
   }
 
+  function getColLetter(index) {
+    return String.fromCharCode(65 + index); // A, B, C, D...
+  }
+
   // ── Abrir y Cerrar Modal Principal ──────────────────────────────────────────
   window.openInvoiceModelsModal = async function () {
     if (modelsModal) {
@@ -4275,7 +4339,177 @@ document.addEventListener('DOMContentLoaded', () => {
     renderModelsGrid();
   }
 
-  // ── Renderizado de la cuadrícula ──────────────────────────────────────────
+  // ── Renderizado de la cuadrícula tipo Excel ────────────────────────────────
+  function renderExcelGrid() {
+    if (!excelHeaderRow || !excelTbody || !excelContainer) return;
+
+    // Actualizar posición de la cuadrícula
+    excelContainer.style.top = `${activeGridConfig.top}%`;
+    excelContainer.style.left = `${activeGridConfig.left}%`;
+    excelContainer.style.width = `${activeGridConfig.width}%`;
+
+    // Actualizar badges
+    if (rowCountBadge) rowCountBadge.textContent = activeGridConfig.rows;
+    if (colCountBadge) colCountBadge.textContent = activeGridConfig.cols;
+
+    // 1. Renderizar Cabecera de Columnas (Headers A, B, C...)
+    excelHeaderRow.innerHTML = `<th style="width: 28px; background: #064e3b; color: #a7f3d0; font-weight: bold; text-align: center;">#</th>`;
+
+    activeGridConfig.columns.forEach((col, idx) => {
+      const th = document.createElement('th');
+      th.style.width = `${col.width || (100 / activeGridConfig.cols)}%`;
+
+      const optionsHtml = FIELD_OPTIONS.map(opt =>
+        `<option value="${opt.value}" ${col.field === opt.value ? 'selected' : ''}>${opt.text}</option>`
+      ).join('');
+
+      th.innerHTML = `
+        <div class="excel-col-header-box">
+          <span class="excel-col-letter">${col.letter || getColLetter(idx)}</span>
+          <select class="excel-header-select" data-col-idx="${idx}">
+            ${optionsHtml}
+          </select>
+        </div>
+      `;
+
+      th.querySelector('select').addEventListener('change', (e) => {
+        activeGridConfig.columns[idx].field = e.target.value;
+        const selectedOpt = FIELD_OPTIONS.find(o => o.value === e.target.value);
+        activeGridConfig.columns[idx].label = selectedOpt ? selectedOpt.text : e.target.value;
+      });
+
+      excelHeaderRow.appendChild(th);
+    });
+
+    // 2. Renderizar Filas y Celdas de Datos (1, 2, 3...)
+    excelTbody.innerHTML = '';
+    for (let r = 0; r < activeGridConfig.rows; r++) {
+      const tr = document.createElement('tr');
+
+      // Celda del número de fila
+      const rowNumTd = document.createElement('td');
+      rowNumTd.className = 'excel-row-header-cell';
+      rowNumTd.textContent = r + 1;
+      tr.appendChild(rowNumTd);
+
+      // Celdas de datos con valores de ejemplo
+      activeGridConfig.columns.forEach((col, cIdx) => {
+        const td = document.createElement('td');
+        const sampleVal = (sampleRowData[r] && sampleRowData[r][cIdx] !== undefined)
+          ? sampleRowData[r][cIdx]
+          : (r === 0 ? col.label : '');
+
+        td.innerHTML = `<input type="text" class="excel-cell-input" value="${escapeHtml(sampleVal)}" placeholder="Fila ${r+1} Col ${col.letter}">`;
+        tr.appendChild(td);
+      });
+
+      excelTbody.appendChild(tr);
+    }
+  }
+
+  // ── Controles de Calibración de la Cuadrícula ───────────────────────────────
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      activeGridConfig.opacity = val;
+      if (opacityValBadge) opacityValBadge.textContent = `${val}%`;
+      if (calibrationBgImg) calibrationBgImg.style.opacity = (val / 100).toString();
+    });
+  }
+
+  if (addRowBtn) {
+    addRowBtn.addEventListener('click', () => {
+      if (activeGridConfig.rows < 15) {
+        activeGridConfig.rows++;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (removeRowBtn) {
+    removeRowBtn.addEventListener('click', () => {
+      if (activeGridConfig.rows > 1) {
+        activeGridConfig.rows--;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (addColBtn) {
+    addColBtn.addEventListener('click', () => {
+      if (activeGridConfig.cols < 8) {
+        const newIdx = activeGridConfig.cols;
+        const newLetter = getColLetter(newIdx);
+        activeGridConfig.columns.push({
+          letter: newLetter,
+          field: 'OTRO',
+          label: `COLUMNA ${newLetter}`,
+          width: 15
+        });
+        activeGridConfig.cols++;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (removeColBtn) {
+    removeColBtn.addEventListener('click', () => {
+      if (activeGridConfig.cols > 2) {
+        activeGridConfig.columns.pop();
+        activeGridConfig.cols--;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  // Mover Posición (Ubicar cuadrícula sobre la factura)
+  if (moveUpBtn) {
+    moveUpBtn.addEventListener('click', () => {
+      if (activeGridConfig.top > 2) {
+        activeGridConfig.top -= 1;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (moveDownBtn) {
+    moveDownBtn.addEventListener('click', () => {
+      if (activeGridConfig.top < 85) {
+        activeGridConfig.top += 1;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (moveLeftBtn) {
+    moveLeftBtn.addEventListener('click', () => {
+      if (activeGridConfig.left > 0.5) {
+        activeGridConfig.left -= 0.5;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (moveRightBtn) {
+    moveRightBtn.addEventListener('click', () => {
+      if (activeGridConfig.left < 20) {
+        activeGridConfig.left += 0.5;
+        renderExcelGrid();
+      }
+    });
+  }
+
+  if (resetPosBtn) {
+    resetPosBtn.addEventListener('click', () => {
+      activeGridConfig.top = defaultGridConfig.top;
+      activeGridConfig.left = defaultGridConfig.left;
+      activeGridConfig.width = defaultGridConfig.width;
+      renderExcelGrid();
+      showToast('Posición de cuadrícula restablecida.', 'info');
+    });
+  }
+
+  // ── Renderizado de la lista de modelos (Cards) ──────────────────────────────
   function renderModelsGrid() {
     if (!modelsGrid) return;
     const searchTerm = modelsSearchInput ? modelsSearchInput.value.trim().toLowerCase() : '';
@@ -4327,8 +4561,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn edit-grid" title="Editar Posición de Campos y Cuadrícula" data-action="editor" style="color: var(--primary); border-color: rgba(37, 99, 235, 0.4); background: rgba(37, 99, 235, 0.1);">
-                <i class="fa-solid fa-arrows-up-down-left-right"></i>
+              <button class="model-action-btn edit" title="Editar y calibrar cuadrícula" data-action="edit">
+                <i class="fa-solid fa-pen"></i>
               </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
@@ -4349,10 +4583,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openLightbox(model);
       });
 
-      // Botón Editar Cuadrícula y Campos
-      card.querySelector('[data-action="editor"]').addEventListener('click', (e) => {
+      // Botón Editar
+      card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
         e.stopPropagation();
-        openModelEditor(model);
+        showUploadPanel(true, model);
       });
 
       // Botón Ver
@@ -4386,344 +4620,6 @@ document.addEventListener('DOMContentLoaded', () => {
       modelsGrid.appendChild(card);
     });
   }
-
-  // ── 18 CAMPOS ESPECIFICADOS POR EL USUARIO ─────────────────────────────────
-  const DEFAULT_DOCUMENT_FIELDS = [
-    // ENCABEZADO
-    { id: 'fecha_emision', label: 'FECHA DE EMISIÓN:', category: 'encabezado', sample: 'Loja, 20/08/2026 12:30', x: 3.5, y: 19.5, visible: true },
-    { id: 'cliente', label: 'CLIENTE:', category: 'encabezado', sample: 'Yeison Fernando Campoverde', x: 3.5, y: 23.5, visible: true },
-    { id: 'direccion', label: 'DIRECCIÓN:', category: 'encabezado', sample: 'Los Rosales, Calle Principal', x: 3.5, y: 27.0, visible: true },
-    { id: 'usuario', label: 'Usuario:', category: 'encabezado', sample: 'administrador', x: 45.0, y: 19.5, visible: true },
-    { id: 'forma_pago_encabezado', label: 'Forma pago:', category: 'encabezado', sample: 'Efectivo', x: 45.0, y: 22.0, visible: true },
-    { id: 'guia_remision', label: 'GUIA DE REMISIÓN:', category: 'encabezado', sample: '001-001-000458', x: 68.0, y: 19.5, visible: true },
-    { id: 'ruc_ci', label: 'R.U.C./C.I.:', category: 'encabezado', sample: '2150507511', x: 72.0, y: 23.5, visible: true },
-    { id: 'telfs', label: 'TELFS:', category: 'encabezado', sample: '0980252022', x: 72.0, y: 27.0, visible: true },
-
-    // TABLA / ITEMS
-    { id: 'col_cant', label: 'CANT.', category: 'tabla', sample: '2', x: 4.5, y: 33.0, visible: true },
-    { id: 'col_codigo', label: 'CODIGO', category: 'tabla', sample: '00442-SC', x: 10.5, y: 33.0, visible: true },
-    { id: 'col_descripcion', label: 'DESCRIPCION', category: 'tabla', sample: '*IC TTL 74LS11 COMPUERTA LOGICA', x: 25.0, y: 33.0, visible: true },
-    { id: 'col_valor_unitario', label: 'VALOR UNITARIO', category: 'tabla', sample: '1.2599', x: 78.0, y: 33.0, visible: true },
-    { id: 'col_valor_total', label: 'VALOR TOTAL', category: 'tabla', sample: '2.5198', x: 89.0, y: 33.0, visible: true },
-
-    // TOTALES Y CIERRE
-    { id: 'valor_total_dolares', label: 'VALOR TOTAL $', category: 'totales', sample: '10.32', x: 82.0, y: 80.0, visible: true },
-    { id: 'cambio', label: 'Cambio:', category: 'totales', sample: '$ 9.68', x: 86.0, y: 94.5, visible: true },
-    { id: 'entregue_conforme', label: 'ENTREGUE CONFORME', category: 'firmas', sample: '[ Firma Emisor ]', x: 34.0, y: 94.5, visible: true },
-    { id: 'recibi_conforme', label: 'RECIBI CONFORME', category: 'firmas', sample: '[ Firma Cliente ]', x: 60.0, y: 94.5, visible: true },
-    { id: 'nota_pie', label: 'SON / NOTAS:', category: 'totales', sample: 'Diez dólares con 32/100', x: 4.5, y: 84.0, visible: true }
-  ];
-
-  // ── ESTADO DEL EDITOR VISUAL ───────────────────────────────────────────────
-  let currentEditingModel = null;
-  let currentModelFields = [];
-  let selectedFieldId = null;
-  let isDraggingField = false;
-  let dragOffset = { x: 0, y: 0 };
-  let currentCatFilter = 'all';
-
-  const editorModal         = document.getElementById('model-editor-modal');
-  const editorTitle         = document.getElementById('model-editor-title');
-  const editorBackBtn       = document.getElementById('model-editor-back-btn');
-  const editorBgImage       = document.getElementById('editor-bg-image');
-  const editorGridLayer     = document.getElementById('editor-grid-layer');
-  const editorFieldsLayer   = document.getElementById('editor-fields-layer');
-  const editorFieldsList    = document.getElementById('editor-fields-list');
-  const editorOpacitySlider = document.getElementById('editor-opacity-slider');
-  const editorOpacityVal    = document.getElementById('editor-opacity-val');
-  const editorShowGridCheck = document.getElementById('editor-show-grid-check');
-  const editorSnapGridCheck = document.getElementById('editor-snap-grid-check');
-  const editorResetBtn      = document.getElementById('model-editor-reset-btn');
-  const editorSaveBtn       = document.getElementById('model-editor-save-btn');
-  const canvasContainer     = document.getElementById('editor-canvas-container');
-
-  // ── ABRIR EDITOR VISUAL ───────────────────────────────────────────────────
-  function openModelEditor(model) {
-    if (!editorModal) return;
-    currentEditingModel = model;
-    
-    // Título
-    if (editorTitle) {
-      editorTitle.innerHTML = `<i class="fa-solid fa-arrows-up-down-left-right" style="color: var(--primary);"></i> Editor de Posiciones: <span style="color: var(--primary);">${escapeHtml(model.nombre)}</span> (${model.tipo})`;
-    }
-
-    // Imagen de fondo
-    if (editorBgImage) {
-      editorBgImage.src = model.archivo_data || '';
-    }
-
-    // Cargar o inicializar posiciones de los 18 campos
-    let savedFields = [];
-    if (model.campos_posiciones) {
-      try {
-        savedFields = typeof model.campos_posiciones === 'string' 
-          ? JSON.parse(model.campos_posiciones) 
-          : model.campos_posiciones;
-      } catch (e) {
-        console.error('Error parseando campos guardados:', e);
-      }
-    }
-
-    // Combinar defaults con guardados para asegurar que los 18 campos siempre existan
-    currentModelFields = DEFAULT_DOCUMENT_FIELDS.map(def => {
-      const found = Array.isArray(savedFields) ? savedFields.find(s => s.id === def.id) : null;
-      return found ? { ...def, ...found } : { ...def };
-    });
-
-    selectedFieldId = null;
-    currentCatFilter = 'all';
-
-    // Restablecer controles de opacidad y grid
-    if (editorOpacitySlider) {
-      editorOpacitySlider.value = 45;
-      if (editorOpacityVal) editorOpacityVal.textContent = '45%';
-      if (editorBgImage) editorBgImage.style.opacity = '0.45';
-    }
-    if (editorShowGridCheck && editorGridLayer) {
-      editorShowGridCheck.checked = true;
-      editorGridLayer.classList.remove('hidden');
-    }
-
-    // Renderizar lista y canvas
-    renderSidebarFieldsList();
-    renderCanvasFields();
-
-    // Mostrar modal
-    editorModal.style.display = 'flex';
-  }
-
-  // ── RENDERIZAR LISTA LATERAL DE CAMPOS ────────────────────────────────────
-  function renderSidebarFieldsList() {
-    if (!editorFieldsList) return;
-    editorFieldsList.innerHTML = '';
-
-    const filtered = currentCatFilter === 'all'
-      ? currentModelFields
-      : currentModelFields.filter(f => f.category === currentCatFilter || (currentCatFilter === 'totales' && f.category === 'firmas'));
-
-    filtered.forEach(field => {
-      const item = document.createElement('div');
-      item.className = `editor-field-item${selectedFieldId === field.id ? ' active' : ''}`;
-      item.dataset.id = field.id;
-
-      let dotColor = '#3b82f6';
-      if (field.category === 'tabla') dotColor = '#8b5cf6';
-      if (field.category === 'totales') dotColor = '#10b981';
-      if (field.category === 'firmas') dotColor = '#f59e0b';
-
-      item.innerHTML = `
-        <div class="editor-field-item-left">
-          <div class="editor-field-dot" style="background: ${dotColor};"></div>
-          <div>
-            <div class="editor-field-item-name">${escapeHtml(field.label)}</div>
-            <div class="editor-field-item-coords">X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%</div>
-          </div>
-        </div>
-        <div style="display: flex; gap: 6px; align-items: center;">
-          <input type="checkbox" class="field-vis-check" ${field.visible !== false ? 'checked' : ''} title="Activar/Desactivar campo" style="accent-color: var(--primary); cursor: pointer;">
-        </div>
-      `;
-
-      // Clic para enfocar y seleccionar
-      item.addEventListener('click', (e) => {
-        if (e.target.classList.contains('field-vis-check')) return;
-        selectField(field.id);
-      });
-
-      // Toggle visibilidad
-      item.querySelector('.field-vis-check').addEventListener('change', (e) => {
-        field.visible = e.target.checked;
-        renderCanvasFields();
-      });
-
-      editorFieldsList.appendChild(item);
-    });
-  }
-
-  // ── SELECCIONAR Y ENFOCAR CAMPO ───────────────────────────────────────────
-  function selectField(fieldId) {
-    selectedFieldId = fieldId;
-    renderSidebarFieldsList();
-
-    // Resaltar en el canvas
-    document.querySelectorAll('.editor-draggable-tag').forEach(tag => {
-      tag.classList.toggle('focused', tag.dataset.id === fieldId);
-    });
-
-    const focusedTag = document.querySelector(`.editor-draggable-tag[data-id="${fieldId}"]`);
-    if (focusedTag) {
-      focusedTag.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-
-  // ── RENDERIZAR CAMPOS SOBRE EL CANVAS ─────────────────────────────────────
-  function renderCanvasFields() {
-    if (!editorFieldsLayer) return;
-    editorFieldsLayer.innerHTML = '';
-
-    currentModelFields.forEach(field => {
-      if (field.visible === false) return;
-
-      const tag = document.createElement('div');
-      tag.className = `editor-draggable-tag cat-${field.category}${selectedFieldId === field.id ? ' focused' : ''}`;
-      tag.dataset.id = field.id;
-      tag.style.left = `${field.x}%`;
-      tag.style.top = `${field.y}%`;
-
-      tag.innerHTML = `
-        <i class="fa-solid fa-grip-vertical tag-handle"></i>
-        <span class="tag-text">${escapeHtml(field.label)}</span>
-        <span class="tag-sample-value">${escapeHtml(field.sample)}</span>
-      `;
-
-      // Drag & Drop con Mouse / Touch
-      tag.addEventListener('mousedown', (e) => startDrag(e, field, tag));
-      tag.addEventListener('touchstart', (e) => startDrag(e, field, tag), { passive: false });
-
-      editorFieldsLayer.appendChild(tag);
-    });
-  }
-
-  // ── LÓGICA DE ARRASTRE DE CAMPOS ──────────────────────────────────────────
-  function startDrag(e, field, tagEl) {
-    e.preventDefault();
-    selectField(field.id);
-    isDraggingField = true;
-    tagEl.classList.add('dragging');
-
-    const rect = canvasContainer.getBoundingClientRect();
-    const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-    const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
-
-    const currentTagLeft = (field.x / 100) * rect.width;
-    const currentTagTop = (field.y / 100) * rect.height;
-
-    dragOffset.x = (clientX - rect.left) - currentTagLeft;
-    dragOffset.y = (clientY - rect.top) - currentTagTop;
-
-    function onMove(moveEvent) {
-      if (!isDraggingField) return;
-      moveEvent.preventDefault();
-
-      const mClientX = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const mClientY = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientY : moveEvent.clientY;
-
-      let newXPixels = (mClientX - rect.left) - dragOffset.x;
-      let newYPixels = (mClientY - rect.top) - dragOffset.y;
-
-      let newXPercent = (newXPixels / rect.width) * 100;
-      let newYPercent = (newYPixels / rect.height) * 100;
-
-      // Ajuste a guías / Snap
-      if (editorSnapGridCheck && editorSnapGridCheck.checked) {
-        const snapGridSize = 1.0; // 1% snap
-        newXPercent = Math.round(newXPercent / snapGridSize) * snapGridSize;
-        newYPercent = Math.round(newYPercent / snapGridSize) * snapGridSize;
-      }
-
-      // Limitar dentro del canvas (0% a 95%)
-      newXPercent = Math.max(0.5, Math.min(92.0, newXPercent));
-      newYPercent = Math.max(0.5, Math.min(97.0, newYPercent));
-
-      field.x = newXPercent;
-      field.y = newYPercent;
-
-      tagEl.style.left = `${newXPercent}%`;
-      tagEl.style.top = `${newYPercent}%`;
-
-      // Actualizar coordenadas en la barra lateral
-      const sidebarItem = document.querySelector(`.editor-field-item[data-id="${field.id}"] .editor-field-item-coords`);
-      if (sidebarItem) {
-        sidebarItem.textContent = `X: ${newXPercent.toFixed(1)}% | Y: ${newYPercent.toFixed(1)}%`;
-      }
-    }
-
-    function onEnd() {
-      isDraggingField = false;
-      tagEl.classList.remove('dragging');
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onEnd);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onEnd);
-    }
-
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd);
-  }
-
-  // ── CONTROLES DEL EDITOR ──────────────────────────────────────────────────
-  if (editorOpacitySlider) {
-    editorOpacitySlider.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (editorOpacityVal) editorOpacityVal.textContent = `${val}%`;
-      if (editorBgImage) editorBgImage.style.opacity = (val / 100).toString();
-    });
-  }
-
-  if (editorShowGridCheck) {
-    editorShowGridCheck.addEventListener('change', (e) => {
-      if (editorGridLayer) {
-        editorGridLayer.classList.toggle('hidden', !e.target.checked);
-      }
-    });
-  }
-
-  // Restablecer posiciones por defecto
-  if (editorResetBtn) {
-    editorResetBtn.addEventListener('click', () => {
-      if (confirm('¿Deseas restablecer las posiciones sugeridas para este modelo?')) {
-        currentModelFields = DEFAULT_DOCUMENT_FIELDS.map(def => ({ ...def }));
-        renderSidebarFieldsList();
-        renderCanvasFields();
-        showToast('Posiciones restablecidas.', 'info');
-      }
-    });
-  }
-
-  // Guardar posiciones en la base de datos
-  if (editorSaveBtn) {
-    editorSaveBtn.addEventListener('click', async () => {
-      if (!currentEditingModel) return;
-
-      const payload = {
-        id: currentEditingModel.id,
-        nombre: currentEditingModel.nombre,
-        tipo: currentEditingModel.tipo,
-        descripcion: currentEditingModel.descripcion,
-        es_predeterminado: currentEditingModel.es_predeterminado,
-        campos_posiciones: JSON.stringify(currentModelFields)
-      };
-
-      const res = await window.api.saveModeloDocumento(payload);
-      if (res && res.success) {
-        showToast('¡Posiciones y cuadrícula del modelo guardadas exitosamente!', 'success');
-        if (editorModal) editorModal.style.display = 'none';
-        await loadAndRenderModels();
-      } else {
-        showToast('Error al guardar posiciones: ' + (res ? res.message : ''), 'error');
-      }
-    });
-  }
-
-  // Botón Volver
-  if (editorBackBtn) {
-    editorBackBtn.addEventListener('click', () => {
-      if (editorModal) editorModal.style.display = 'none';
-      if (modelsModal) modelsModal.style.display = 'flex';
-    });
-  }
-
-  // Pestañas de categorías de campos en el editor
-  document.querySelectorAll('.editor-cat-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.editor-cat-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCatFilter = btn.dataset.cat || 'all';
-      renderSidebarFieldsList();
-    });
-  });
 
   // ── Lightbox / Visualizador en alta resolución ───────────────────────────────
   function openLightbox(model) {
@@ -4766,6 +4662,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (previewBox) previewBox.style.display = 'block';
       if (dropzonePrompt) dropzonePrompt.style.display = 'none';
       if (fileInfoEl) fileInfoEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+      // Cargar en el canvas de calibración con transparencia y activar la cuadrícula Excel
+      if (calibrationBgImg) {
+        calibrationBgImg.src = selectedFileBase64;
+        calibrationBgImg.style.opacity = (activeGridConfig.opacity / 100).toString();
+      }
+      if (calibrationPanel) {
+        calibrationPanel.style.display = 'flex';
+      }
+      renderExcelGrid();
 
       // Autocompletar nombre si está vacío
       if (modelNameInput && !modelNameInput.value.trim()) {
@@ -4815,7 +4721,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (isEdit && model) {
-      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar Modelo';
+      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar y Calibrar Modelo';
       if (modelEditId) modelEditId.value = model.id;
       if (modelNameInput) modelNameInput.value = model.nombre || '';
       if (modelTypeSelect) modelTypeSelect.value = model.tipo || 'Factura';
@@ -4825,11 +4731,34 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileName = model.archivo_nombre || '';
       selectedFileType = model.archivo_tipo || '';
 
+      // Cargar configuración de cuadrícula guardada si existe
+      if (model.config_cuadricula) {
+        try {
+          activeGridConfig = typeof model.config_cuadricula === 'string'
+            ? JSON.parse(model.config_cuadricula)
+            : model.config_cuadricula;
+        } catch (e) {
+          activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
+        }
+      } else {
+        activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
+      }
+
+      if (opacitySlider) opacitySlider.value = activeGridConfig.opacity || 55;
+      if (opacityValBadge) opacityValBadge.textContent = `${activeGridConfig.opacity || 55}%`;
+
       if (selectedFileBase64 && previewImg) {
         previewImg.src = selectedFileBase64;
         if (previewBox) previewBox.style.display = 'block';
         if (dropzonePrompt) dropzonePrompt.style.display = 'none';
         if (fileInfoEl) fileInfoEl.textContent = model.archivo_nombre || 'Imagen actual';
+
+        if (calibrationBgImg) {
+          calibrationBgImg.src = selectedFileBase64;
+          calibrationBgImg.style.opacity = ((activeGridConfig.opacity || 55) / 100).toString();
+        }
+        if (calibrationPanel) calibrationPanel.style.display = 'flex';
+        renderExcelGrid();
       }
     } else {
       if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo';
@@ -4838,9 +4767,13 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileBase64 = null;
       selectedFileName = '';
       selectedFileType = '';
+      activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
+      if (opacitySlider) opacitySlider.value = 55;
+      if (opacityValBadge) opacityValBadge.textContent = '55%';
       if (previewBox) previewBox.style.display = 'none';
       if (dropzonePrompt) dropzonePrompt.style.display = 'block';
       if (modelFileInput) modelFileInput.value = '';
+      if (calibrationPanel) calibrationPanel.style.display = 'none';
     }
   }
 
@@ -4853,6 +4786,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFileType = '';
     if (previewBox) previewBox.style.display = 'none';
     if (dropzonePrompt) dropzonePrompt.style.display = 'block';
+    if (calibrationPanel) calibrationPanel.style.display = 'none';
   }
 
   if (toggleUploadBtn) {
@@ -4898,29 +4832,15 @@ document.addEventListener('DOMContentLoaded', () => {
         archivo_nombre: selectedFileName || 'modelo.png',
         archivo_tipo: selectedFileType || 'image/png',
         archivo_data: selectedFileBase64,
-        campos_posiciones: JSON.stringify(DEFAULT_DOCUMENT_FIELDS),
+        config_cuadricula: activeGridConfig,
         es_predeterminado: esPredeterminado
       };
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo guardado! Abriendo editor de posiciones...', 'success');
+        showToast(editId ? 'Modelo y calibración de cuadrícula actualizados.' : '¡Modelo y cuadrícula de calibración guardados exitosamente!', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
-
-        // Si es nuevo modelo, abrir inmediatamente el editor de cuadrícula
-        if (!editId && res.id) {
-          const newModel = allModels.find(m => m.id === res.id) || {
-            id: res.id,
-            nombre,
-            tipo,
-            descripcion,
-            archivo_data: selectedFileBase64,
-            campos_posiciones: JSON.stringify(DEFAULT_DOCUMENT_FIELDS),
-            es_predeterminado: esPredeterminado
-          };
-          openModelEditor(newModel);
-        }
       } else {
         showToast('Error al guardar el modelo: ' + (res ? res.message : ''), 'error');
       }
