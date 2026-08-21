@@ -1884,4 +1884,55 @@ body {
   transform: translateY(-1px);
 }
 
+/* ── Menú Contextual Tipo Excel (Clic Derecho) ────────────────────────────── */
+.excel-context-menu {
+  position: fixed;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  padding: 6px 0;
+  z-index: 10000;
+  min-width: 180px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: none;
+}
+
+.excel-context-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.excel-context-item:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.excel-context-item i {
+  width: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.excel-context-item.danger {
+  color: #f87171;
+}
+
+.excel-context-item.danger:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.excel-context-separator {
+  height: 1px;
+  background: #334155;
+  margin: 4px 0;
+}
+
 
