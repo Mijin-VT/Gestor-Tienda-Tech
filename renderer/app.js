@@ -4327,6 +4327,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
+              <button class="model-action-btn calibrate" title="Diseñar / Calibrar Campos y Cuadrícula" data-action="calibrate" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.1);">
+                <i class="fa-solid fa-crosshairs"></i>
+              </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
               </button>
@@ -4344,6 +4347,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Clic en la miniatura → Abrir lightbox
       card.querySelector('.model-thumb-container').addEventListener('click', () => {
         openLightbox(model);
+      });
+
+      // Botón Calibrar
+      card.querySelector('[data-action="calibrate"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openCalibratorModal(model);
       });
 
       // Botón Ver
@@ -4556,9 +4565,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y guardado exitosamente!', 'success');
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo subido con éxito! Abriendo calibrador de cuadrícula...', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
+
+        // Si es un modelo nuevo recién creado, abrir el calibrador directamente
+        const savedId = res.id || editId;
+        const savedModel = allModels.find(m => m.id === savedId) || { ...payload, id: savedId };
+        openCalibratorModal(savedModel);
       } else {
         showToast('Error al guardar el modelo: ' + (res ? res.message : ''), 'error');
       }
@@ -4579,6 +4593,384 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modelsSearchInput) {
     modelsSearchInput.addEventListener('input', () => {
       renderModelsGrid();
+    });
+  }
+
+  // ==========================================================================
+  // CALIBRADOR / DISEÑADOR DE CAMPOS CON CUADRÍCULA Y TRANSPARENCIA
+  // ==========================================================================
+
+  const DEFAULT_FIELDS_DEF = [
+    { id: 'fecha_emision',      label: 'FECHA DE EMISION:',   cat: 'header',    sample: 'Loja, 1/8/2026 12:6:51', x: 22.0, y: 20.5 },
+    { id: 'cliente',            label: 'CLIENTE:',            cat: 'header',    sample: 'Yeison Fernando Campoverde', x: 20.0, y: 24.0 },
+    { id: 'direccion',          label: 'DIRECCION:',          cat: 'header',    sample: 'Los Rosales', x: 18.0, y: 27.5 },
+    { id: 'usuario',            label: 'Ususario:',           cat: 'header',    sample: 'administrador', x: 53.0, y: 20.5 },
+    { id: 'forma_pago',         label: 'Forma pago:',         cat: 'header',    sample: 'Efectivo', x: 53.0, y: 22.5 },
+    { id: 'guia_remision',      label: 'GUIA DE REMISION:',   cat: 'header',    sample: '001-001', x: 74.0, y: 20.5 },
+    { id: 'ruc_ci',             label: 'R.U.C./C.I.:',        cat: 'header',    sample: '2150507511', x: 74.0, y: 23.8 },
+    { id: 'telfs',              label: 'TELFS:',              cat: 'header',    sample: '0980252022', x: 74.0, y: 27.0 },
+    { id: 'cambio',             label: 'Cambio:',             cat: 'total',     sample: '$ 9.68', x: 91.0, y: 95.0 },
+    { id: 'col_cant',           label: 'CANT.',               cat: 'table',     sample: '1', x: 4.8, y: 31.5 },
+    { id: 'col_codigo',         label: 'CODIGO',              cat: 'table',     sample: '00442-SC', x: 11.5, y: 31.5 },
+    { id: 'col_descripcion',    label: 'DESCRIPCION',         cat: 'table',     sample: '*IC TTL 74LS11/NTE74LS11', x: 45.0, y: 31.5 },
+    { id: 'col_unitario',       label: 'VALOR UNITARIO',      cat: 'table',     sample: '1.2599', x: 83.5, y: 31.5 },
+    { id: 'col_total',          label: 'VALOR TOTAL',         cat: 'table',     sample: '1.2599', x: 94.5, y: 31.5 },
+    { id: 'valor_total_usd',    label: 'VALOR TOTAL $',       cat: 'total',     sample: '10.32', x: 86.0, y: 80.5 },
+    { id: 'entregue_conforme',  label: 'ENTREGUE CONFORME',   cat: 'signature', sample: 'Firma Emisor', x: 40.0, y: 95.0 },
+    { id: 'recibi_conforme',    label: 'RECIBI CONFORME',     cat: 'signature', sample: 'Firma Cliente', x: 65.0, y: 95.0 }
+  ];
+
+  let activeCalibratorModel = null;
+  let activeFieldsData = [];
+  let selectedMarkerId = null;
+  let isDragging = false;
+  let dragFieldId = null;
+  let currentZoom = 1;
+  let isSnapEnabled = true;
+
+  const calibratorModal     = document.getElementById('model-calibrator-modal');
+  const calibratorTitle     = document.getElementById('calibrator-modal-title');
+  const calibratorCanvas    = document.getElementById('calibrator-canvas');
+  const calibratorBgImg     = document.getElementById('calibrator-bg-img');
+  const calibratorGridLayer = document.getElementById('calibrator-grid-overlay');
+  const calibratorMarkers   = document.getElementById('calibrator-markers-layer');
+  const calibratorFieldsList= document.getElementById('calibrator-fields-list');
+  const opacitySlider       = document.getElementById('calibrator-opacity-slider');
+  const opacityValText      = document.getElementById('calibrator-opacity-val');
+  const toggleGridBtn       = document.getElementById('calibrator-toggle-grid-btn');
+  const gridSizeSelect      = document.getElementById('calibrator-grid-size-select');
+  const snapBtn             = document.getElementById('calibrator-snap-btn');
+  const zoomInBtn           = document.getElementById('calibrator-zoom-in');
+  const zoomOutBtn          = document.getElementById('calibrator-zoom-out');
+  const zoomFitBtn          = document.getElementById('calibrator-zoom-fit');
+  const zoomValText         = document.getElementById('calibrator-zoom-val');
+  const resetBtn            = document.getElementById('calibrator-reset-btn');
+  const saveCalibratorBtn   = document.getElementById('calibrator-save-btn');
+
+  window.openCalibratorModal = function (model) {
+    if (!calibratorModal || !model) return;
+    activeCalibratorModel = model;
+
+    if (calibratorTitle) {
+      calibratorTitle.innerHTML = `<i class="fa-solid fa-object-ungroup" style="color: var(--primary);"></i> Calibrando: <strong>${escapeHtml(model.nombre || 'Modelo')}</strong> (${model.tipo || 'Documento'})`;
+    }
+
+    if (calibratorBgImg) {
+      calibratorBgImg.src = model.archivo_data || '';
+    }
+
+    // Cargar o inicializar campos
+    let savedFields = [];
+    if (model.campos_config) {
+      try {
+        savedFields = typeof model.campos_config === 'string' ? JSON.parse(model.campos_config) : model.campos_config;
+      } catch (e) {
+        savedFields = [];
+      }
+    }
+
+    // Merge con la lista base de 17 campos
+    activeFieldsData = DEFAULT_FIELDS_DEF.map(def => {
+      const found = Array.isArray(savedFields) ? savedFields.find(s => s.id === def.id) : null;
+      return {
+        ...def,
+        x: found && typeof found.x === 'number' ? found.x : def.x,
+        y: found && typeof found.y === 'number' ? found.y : def.y
+      };
+    });
+
+    selectedMarkerId = null;
+    currentZoom = 1;
+    applyZoom();
+
+    calibratorModal.style.display = 'flex';
+
+    // Renderizar una vez cargue la imagen
+    if (calibratorBgImg.complete) {
+      renderCalibratorWorkspace();
+    } else {
+      calibratorBgImg.onload = () => renderCalibratorWorkspace();
+    }
+  };
+
+  window.closeCalibratorModal = function () {
+    if (calibratorModal) calibratorModal.style.display = 'none';
+  };
+
+  function renderCalibratorWorkspace() {
+    renderMarkers();
+    renderSidebarList();
+  }
+
+  function renderMarkers() {
+    if (!calibratorMarkers) return;
+    calibratorMarkers.innerHTML = '';
+
+    activeFieldsData.forEach(field => {
+      const marker = document.createElement('div');
+      marker.className = `calibrator-marker${selectedMarkerId === field.id ? ' selected' : ''}`;
+      marker.dataset.id = field.id;
+      marker.dataset.cat = field.cat || 'header';
+      marker.style.left = `${field.x}%`;
+      marker.style.top = `${field.y}%`;
+
+      marker.innerHTML = `
+        <div class="calibrator-marker-pin"></div>
+        <span class="calibrator-marker-label">${escapeHtml(field.label)}</span>
+        <span class="calibrator-marker-val">${escapeHtml(field.sample)}</span>
+      `;
+
+      // Eventos de selección y arrastre
+      marker.addEventListener('mousedown', (e) => startDragging(e, field.id));
+
+      calibratorMarkers.appendChild(marker);
+    });
+  }
+
+  function renderSidebarList() {
+    if (!calibratorFieldsList) return;
+    calibratorFieldsList.innerHTML = '';
+
+    activeFieldsData.forEach(field => {
+      const row = document.createElement('div');
+      row.className = `calibrator-field-row${selectedMarkerId === field.id ? ' active' : ''}`;
+      row.dataset.id = field.id;
+
+      row.innerHTML = `
+        <div class="calibrator-field-info">
+          <span class="calibrator-field-title">${escapeHtml(field.label)}</span>
+          <span class="calibrator-field-coords">X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%</span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--primary);"><i class="fa-solid fa-arrows-up-down-left-right"></i></div>
+      `;
+
+      row.addEventListener('click', () => {
+        selectMarker(field.id);
+      });
+
+      calibratorFieldsList.appendChild(row);
+    });
+  }
+
+  function selectMarker(id) {
+    selectedMarkerId = id;
+    document.querySelectorAll('.calibrator-marker').forEach(m => {
+      m.classList.toggle('selected', m.dataset.id === id);
+    });
+    document.querySelectorAll('.calibrator-field-row').forEach(r => {
+      r.classList.toggle('active', r.dataset.id === id);
+    });
+  }
+
+  // ── Drag & Drop de Marcadores sobre el Canvas ───────────────────────────────
+  function startDragging(e, fieldId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    isDragging = true;
+    dragFieldId = fieldId;
+    selectMarker(fieldId);
+
+    const markerEl = document.querySelector(`.calibrator-marker[data-id="${fieldId}"]`);
+    if (markerEl) markerEl.classList.add('dragging');
+
+    window.addEventListener('mousemove', onDragging);
+    window.addEventListener('mouseup', stopDragging);
+  }
+
+  function onDragging(e) {
+    if (!isDragging || !dragFieldId || !calibratorCanvas) return;
+
+    const rect = calibratorCanvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    // Coordenadas relativas al canvas en porcentaje
+    let xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+    let yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Snap to grid (redondeo a múltiplos de 1% o 0.5%)
+    if (isSnapEnabled) {
+      xPercent = Math.round(xPercent * 2) / 2;
+      yPercent = Math.round(yPercent * 2) / 2;
+    }
+
+    // Límites 0% a 100%
+    xPercent = Math.max(0.5, Math.min(99.5, xPercent));
+    yPercent = Math.max(0.5, Math.min(99.5, yPercent));
+
+    // Actualizar datos
+    const field = activeFieldsData.find(f => f.id === dragFieldId);
+    if (field) {
+      field.x = xPercent;
+      field.y = yPercent;
+
+      const markerEl = document.querySelector(`.calibrator-marker[data-id="${dragFieldId}"]`);
+      if (markerEl) {
+        markerEl.style.left = `${xPercent}%`;
+        markerEl.style.top = `${yPercent}%`;
+      }
+
+      // Actualizar coords en sidebar
+      const row = document.querySelector(`.calibrator-field-row[data-id="${dragFieldId}"] .calibrator-field-coords`);
+      if (row) {
+        row.textContent = `X: ${xPercent.toFixed(1)}% | Y: ${yPercent.toFixed(1)}%`;
+      }
+    }
+  }
+
+  function stopDragging() {
+    if (!isDragging) return;
+    isDragging = false;
+
+    if (dragFieldId) {
+      const markerEl = document.querySelector(`.calibrator-marker[data-id="${dragFieldId}"]`);
+      if (markerEl) markerEl.classList.remove('dragging');
+      dragFieldId = null;
+    }
+
+    window.removeEventListener('mousemove', onDragging);
+    window.removeEventListener('mouseup', stopDragging);
+  }
+
+  // ── Mover marcador seleccionado con flechas del teclado ─────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (!calibratorModal || calibratorModal.style.display === 'none' || !selectedMarkerId) return;
+
+    let step = e.shiftKey ? 1.0 : 0.2;
+    let handled = false;
+
+    const field = activeFieldsData.find(f => f.id === selectedMarkerId);
+    if (!field) return;
+
+    if (e.key === 'ArrowLeft') {
+      field.x = Math.max(0.5, field.x - step);
+      handled = true;
+    } else if (e.key === 'ArrowRight') {
+      field.x = Math.min(99.5, field.x + step);
+      handled = true;
+    } else if (e.key === 'ArrowUp') {
+      field.y = Math.max(0.5, field.y - step);
+      handled = true;
+    } else if (e.key === 'ArrowDown') {
+      field.y = Math.min(99.5, field.y + step);
+      handled = true;
+    }
+
+    if (handled) {
+      e.preventDefault();
+      const markerEl = document.querySelector(`.calibrator-marker[data-id="${selectedMarkerId}"]`);
+      if (markerEl) {
+        markerEl.style.left = `${field.x}%`;
+        markerEl.style.top = `${field.y}%`;
+      }
+      const row = document.querySelector(`.calibrator-field-row[data-id="${selectedMarkerId}"] .calibrator-field-coords`);
+      if (row) {
+        row.textContent = `X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%`;
+      }
+    }
+  });
+
+  // ── Control de Opacidad de Imagen de Fondo ─────────────────────────────────
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (opacityValText) opacityValText.textContent = `${val}%`;
+      if (calibratorBgImg) calibratorBgImg.style.opacity = (val / 100).toString();
+    });
+  }
+
+  // ── Control de Cuadrícula ──────────────────────────────────────────────────
+  if (toggleGridBtn) {
+    toggleGridBtn.addEventListener('click', () => {
+      if (calibratorGridLayer.style.display === 'none') {
+        calibratorGridLayer.style.display = 'block';
+        toggleGridBtn.classList.add('active');
+      } else {
+        calibratorGridLayer.style.display = 'none';
+        toggleGridBtn.classList.remove('active');
+      }
+    });
+  }
+
+  if (gridSizeSelect) {
+    gridSizeSelect.addEventListener('change', (e) => {
+      calibratorGridLayer.className = `calibrator-grid-overlay ${e.target.value}`;
+    });
+  }
+
+  if (snapBtn) {
+    snapBtn.addEventListener('click', () => {
+      isSnapEnabled = !isSnapEnabled;
+      snapBtn.classList.toggle('active', isSnapEnabled);
+      showToast(isSnapEnabled ? 'Ajuste a cuadrícula activado' : 'Ajuste a cuadrícula desactivado', 'info');
+    });
+  }
+
+  // ── Controles de Zoom ──────────────────────────────────────────────────────
+  function applyZoom() {
+    if (calibratorCanvas) {
+      calibratorCanvas.style.transform = `scale(${currentZoom})`;
+    }
+    if (zoomValText) {
+      zoomValText.textContent = `${Math.round(currentZoom * 100)}%`;
+    }
+  }
+
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener('click', () => {
+      currentZoom = Math.min(2.5, currentZoom + 0.15);
+      applyZoom();
+    });
+  }
+
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener('click', () => {
+      currentZoom = Math.max(0.4, currentZoom - 0.15);
+      applyZoom();
+    });
+  }
+
+  if (zoomFitBtn) {
+    zoomFitBtn.addEventListener('click', () => {
+      currentZoom = 1;
+      applyZoom();
+    });
+  }
+
+  // ── Restablecer Posiciones por Defecto ──────────────────────────────────────
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (confirm('¿Restablecer las posiciones de todos los campos a los valores predeterminados?')) {
+        activeFieldsData = DEFAULT_FIELDS_DEF.map(d => ({ ...d }));
+        renderCalibratorWorkspace();
+        showToast('Posiciones restablecidas.', 'info');
+      }
+    });
+  }
+
+  // ── Guardar Calibración en la Base de Datos ─────────────────────────────────
+  if (saveCalibratorBtn) {
+    saveCalibratorBtn.addEventListener('click', async () => {
+      if (!activeCalibratorModel || !activeCalibratorModel.id) {
+        showToast('No hay un modelo activo para guardar.', 'warning');
+        return;
+      }
+
+      const payload = {
+        id: activeCalibratorModel.id,
+        nombre: activeCalibratorModel.nombre,
+        tipo: activeCalibratorModel.tipo,
+        campos_config: activeFieldsData
+      };
+
+      const res = await window.api.saveModeloDocumento(payload);
+      if (res && res.success) {
+        showToast('¡Calibración y posiciones de campos guardadas con éxito!', 'success');
+        activeCalibratorModel.campos_config = activeFieldsData;
+        await loadAndRenderModels();
+      } else {
+        showToast('Error al guardar calibración: ' + (res ? res.message : ''), 'error');
+      }
     });
   }
 
