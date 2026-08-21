@@ -101,5 +101,5 @@ contextBridge.exposeInMainWorld('api', {
   saveModeloDocumento: (modelo) => ipcRenderer.invoke('db:save-modelo-documento', modelo),
   deleteModeloDocumento: (id) => ipcRenderer.invoke('db:delete-modelo-documento', id),
   setPredeterminadoModelo: (id, tipo) => ipcRenderer.invoke('db:set-predeterminado-modelo', { id, tipo }),
-  renderTemplateInvoice: (payload) => ipcRenderer.invoke('engine:render-template-invoice', payload)
+  processInvoiceTemplate: (params) => ipcRenderer.invoke('app:process-invoice-template', params)
 });

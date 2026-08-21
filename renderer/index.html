@@ -1820,28 +1820,69 @@
   </div>
 
   <!-- Modal: Vista Previa e Impresión de Factura -->
-  <div id="invoice-print-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 680px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding: 18px 25px;">
-        <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700;"><i class="fa-solid fa-file-invoice"></i> Comprobante Electrónico (SRI)</h3>
+  <div id="invoice-print-modal" class="modal-overlay" style="display: none; z-index: 2000;">
+    <div class="modal-card" style="background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 16px; width: 780px; max-width: 95vw; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.7);">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding: 16px 22px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 class="modal-title" style="font-size: 1.15rem; font-weight: 700; margin: 0;"><i class="fa-solid fa-file-invoice"></i> Comprobante de Facturación</h3>
+          <span id="invoice-print-num-badge" style="background: rgba(37,99,235,0.15); color: var(--primary); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;"></span>
+        </div>
         <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
       </div>
+
+      <!-- Barra de Configuración de Motor: Modelo & Visión OpenCV + Pillow -->
+      <div style="padding: 10px 20px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);"><i class="fa-solid fa-layer-group"></i> Plantilla / Modelo:</label>
+          <select id="invoice-template-select" class="form-input" style="width: auto; min-width: 180px; height: 32px; padding: 4px 10px; font-size: 0.82rem; margin: 0; background: var(--bg-primary);">
+            <option value="">Lienzo Estándar Oficial</option>
+          </select>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btn-render-vision" class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 0.82rem; height: 32px; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #2563eb, #7c3aed); border: none;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Renderizar (OpenCV + Pillow)</span>
+          </button>
+          
+          <div style="display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 2px; border: 1px solid var(--card-border);">
+            <button type="button" id="btn-view-mode-html" class="models-tab-btn active" style="padding: 4px 10px; font-size: 0.78rem;">HTML SRI</button>
+            <button type="button" id="btn-view-mode-vision" class="models-tab-btn" style="padding: 4px 10px; font-size: 0.78rem;">Modelo Imagen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenedor 1: Vista HTML Estándar SRI -->
       <div id="invoice-preview-container" style="padding: 25px; overflow-y: auto; flex-grow: 1; background: #fff; color: #1e293b; border-radius: 8px; margin: 15px;">
         <!-- Contenido HTML de la Factura renderizado dinámicamente -->
       </div>
-      <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 10px; background: rgba(0,0,0,0.1); flex-wrap: wrap;">
-        <button type="button" id="btn-render-with-template" class="btn-secondary" style="width: auto; padding: 10px 18px; margin-top: 0; border: 1px solid #8b5cf6; color: #fff; background: rgba(139, 92, 246, 0.25);">
-          <i class="fa-solid fa-wand-magic-sparkles"></i> Renderizar sobre Modelo (OpenCV + PIL)
-        </button>
-        <button type="button" id="btn-print-printer" class="btn-primary" style="width: auto; padding: 10px 20px;">
-          <i class="fa-solid fa-print"></i> Imprimir
-        </button>
-        <button type="button" id="btn-print-pdf" class="btn-secondary" style="width: auto; padding: 10px 20px; margin-top: 0; border: 1px solid var(--primary); color: #fff; background: var(--primary-dark);">
-          <i class="fa-solid fa-file-pdf"></i> Guardar PDF
-        </button>
-        <button type="button" class="btn-secondary modal-close-btn" style="width: auto; padding: 10px 20px; margin-top: 0;">
-          Cerrar
-        </button>
+
+      <!-- Contenedor 2: Vista Modelo Renderizado por OpenCV + Pillow -->
+      <div id="invoice-vision-container" style="display: none; padding: 15px; overflow-y: auto; flex-grow: 1; background: #0f172a; border-radius: 8px; margin: 15px; text-align: center;">
+        <div id="invoice-vision-loading" style="display: none; padding: 40px; color: var(--text-muted);">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
+          <p style="font-size: 0.9rem;">Procesando visión computacional (OpenCV) y renderizado tipográfico (Pillow)...</p>
+        </div>
+        <img id="invoice-vision-img" src="" alt="Factura procesada" style="max-width: 100%; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: none;">
+      </div>
+
+      <div class="modal-footer" style="padding: 15px 22px; border-top: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1);">
+        <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;" id="vision-status-note">
+          <i class="fa-solid fa-shield-halved" style="color: var(--success);"></i> Motor OpenCV & Pillow listo
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" id="btn-print-printer" class="btn-primary" style="width: auto; padding: 9px 18px; font-size: 0.85rem; margin: 0;">
+            <i class="fa-solid fa-print"></i> Imprimir
+          </button>
+          <button type="button" id="btn-print-pdf" class="btn-secondary" style="width: auto; padding: 9px 18px; font-size: 0.85rem; margin: 0; border: 1px solid var(--primary); color: #fff; background: var(--primary-dark);">
+            <i class="fa-solid fa-file-pdf"></i> Guardar PDF
+          </button>
+          <button type="button" id="btn-download-image" class="btn-secondary" style="display: none; width: auto; padding: 9px 18px; font-size: 0.85rem; margin: 0; border: 1px solid #10b981; color: #10b981;">
+            <i class="fa-solid fa-image"></i> Guardar Imagen
+          </button>
+          <button type="button" class="btn-secondary modal-close-btn" style="width: auto; padding: 9px 18px; font-size: 0.85rem; margin: 0;">
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   </div>

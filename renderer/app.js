@@ -2062,85 +2062,170 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(res.message, 'error');
         return;
       }
-      const html = buildInvoiceHtml(res.invoice, res.items || [], res.config || {});
-      const container = document.getElementById('invoice-preview-container');
-      if (container) {
-        container.innerHTML = html;
+
+      const invoice = res.invoice;
+      const items = res.items || [];
+      const config = res.config || {};
+
+      const numBadge = document.getElementById('invoice-print-num-badge');
+      if (numBadge) numBadge.textContent = invoice.numero_factura || `ID #${invoice.id}`;
+
+      // 1. Render HTML Estándar
+      const html = buildInvoiceHtml(invoice, items, config);
+      const containerHtml = document.getElementById('invoice-preview-container');
+      const containerVision = document.getElementById('invoice-vision-container');
+      const visionImg = document.getElementById('invoice-vision-img');
+      const visionLoading = document.getElementById('invoice-vision-loading');
+      const visionNote = document.getElementById('vision-status-note');
+      const btnDownloadImg = document.getElementById('btn-download-image');
+      const btnViewHtml = document.getElementById('btn-view-mode-html');
+      const btnViewVision = document.getElementById('btn-view-mode-vision');
+
+      if (containerHtml) {
+        containerHtml.innerHTML = html;
+        containerHtml.style.display = 'block';
       }
+      if (containerVision) containerVision.style.display = 'none';
+      if (btnViewHtml) btnViewHtml.classList.add('active');
+      if (btnViewVision) btnViewVision.classList.remove('active');
+      if (btnDownloadImg) btnDownloadImg.style.display = 'none';
+
+      // 2. Cargar lista de plantillas disponibles en el selector
+      const templateSelect = document.getElementById('invoice-template-select');
+      if (templateSelect) {
+        templateSelect.innerHTML = '<option value="">-- Modelo Predeterminado --</option>';
+        try {
+          const modRes = await window.api.getModelosDocumentos();
+          if (modRes && modRes.success && modRes.recordset) {
+            modRes.recordset.forEach(m => {
+              const opt = document.createElement('option');
+              opt.value = m.id;
+              opt.textContent = `${m.nombre} (${m.tipo})${m.es_predeterminado ? ' ★' : ''}`;
+              if (m.es_predeterminado) opt.selected = true;
+              templateSelect.appendChild(opt);
+            });
+          }
+        } catch(e) { console.error('Error cargando modelos:', e); }
+      }
+
+      // 3. Función para renderizar con OpenCV + Pillow
+      let processedImageB64 = null;
+      let processedImagePath = null;
+
+      const renderVisionInvoice = async () => {
+        if (!containerVision || !visionImg) return;
+        
+        containerHtml.style.display = 'none';
+        containerVision.style.display = 'block';
+        if (btnViewHtml) btnViewHtml.classList.remove('active');
+        if (btnViewVision) btnViewVision.classList.add('active');
+
+        if (visionLoading) visionLoading.style.display = 'block';
+        visionImg.style.display = 'none';
+
+        try {
+          const selectedTemplateId = templateSelect ? templateSelect.value : null;
+
+          const invoicePayload = {
+            empresa_nombre: config.company_name || 'GESTOR TIENDA TECH',
+            empresa_ruc: config.company_ruc || '1799999999001',
+            empresa_direccion: config.company_address || 'Av. Principal #123 y Central',
+            empresa_telefono: config.company_phone || '+593 99 999 9999',
+            tipo_documento: invoice.tipo_documento || 'FACTURA DE VENTA',
+            numero_factura: invoice.numero_factura || '001-001-00000001',
+            fecha: invoice.fecha_emision ? new Date(invoice.fecha_emision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            clave_acceso_sri: invoice.clave_acceso || '',
+            cliente_nombre: invoice.cliente_nombre || 'CONSUMIDOR FINAL',
+            cliente_documento: invoice.cliente_documento || '9999999999',
+            cliente_telefono: invoice.cliente_telefono || '',
+            cliente_correo: invoice.cliente_correo || '',
+            cliente_direccion: invoice.cliente_direccion || 'Quito, Ecuador',
+            metodo_pago: invoice.metodo_pago || 'Efectivo',
+            subtotal: parseFloat(invoice.subtotal || 0),
+            abono: parseFloat(invoice.abono || 0),
+            impuesto: parseFloat(invoice.impuesto || 0),
+            total: parseFloat(invoice.total || 0),
+            items: items.map(it => ({
+              cantidad: it.cantidad || 1,
+              descripcion: it.descripcion || it.nombre || 'Ítem',
+              precio_unitario: parseFloat(it.precio_unitario || it.precio || 0),
+              subtotal: parseFloat(it.subtotal || 0)
+            }))
+          };
+
+          const pyRes = await window.api.processInvoiceTemplate({
+            invoiceData: invoicePayload,
+            templateId: selectedTemplateId || null,
+            format: 'PNG',
+            autoDeskew: true,
+            autoPerspective: false
+          });
+
+          if (visionLoading) visionLoading.style.display = 'none';
+
+          if (pyRes && pyRes.success && pyRes.base64) {
+            processedImageB64 = pyRes.base64;
+            processedImagePath = pyRes.output_path || null;
+            visionImg.src = pyRes.base64;
+            visionImg.style.display = 'inline-block';
+            if (btnDownloadImg) btnDownloadImg.style.display = 'inline-flex';
+            if (visionNote) visionNote.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Renderizado HD completado (${pyRes.width || 800}x${pyRes.height || 1100} px)`;
+            showToast('¡Factura procesada con OpenCV + Pillow con éxito!', 'success');
+          } else {
+            if (visionNote) visionNote.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #f87171;"></i> ${pyRes ? pyRes.message : 'Error en motor Python'}`;
+            showToast(pyRes ? pyRes.message : 'Error al procesar con visión computacional.', 'error');
+          }
+        } catch(e) {
+          if (visionLoading) visionLoading.style.display = 'none';
+          console.error(e);
+          showToast('Error al ejecutar motor de procesamiento.', 'error');
+        }
+      };
+
+      const btnRenderVision = document.getElementById('btn-render-vision');
+      if (btnRenderVision) {
+        btnRenderVision.onclick = renderVisionInvoice;
+      }
+
+      if (btnViewHtml) {
+        btnViewHtml.onclick = () => {
+          if (containerHtml) containerHtml.style.display = 'block';
+          if (containerVision) containerVision.style.display = 'none';
+          btnViewHtml.classList.add('active');
+          if (btnViewVision) btnViewVision.classList.remove('active');
+          if (btnDownloadImg) btnDownloadImg.style.display = 'none';
+        };
+      }
+
+      if (btnViewVision) {
+        btnViewVision.onclick = () => {
+          if (!processedImageB64) {
+            renderVisionInvoice();
+          } else {
+            if (containerHtml) containerHtml.style.display = 'none';
+            if (containerVision) containerVision.style.display = 'block';
+            btnViewVision.classList.add('active');
+            if (btnViewHtml) btnViewHtml.classList.remove('active');
+            if (btnDownloadImg) btnDownloadImg.style.display = 'inline-flex';
+          }
+        };
+      }
+
+      if (btnDownloadImg) {
+        btnDownloadImg.onclick = () => {
+          if (processedImageB64) {
+            const a = document.createElement('a');
+            a.href = processedImageB64;
+            a.download = `Factura_${invoice.numero_factura || invoice.id}_HD.png`;
+            a.click();
+            showToast('Imagen guardada exitosamente.', 'success');
+          }
+        };
+      }
+
       const modal = document.getElementById('invoice-print-modal');
       if (modal) {
         modal.style.display = 'flex';
-      }
-
-      window.currentPreviewInvoiceData = {
-        numero_factura: res.invoice.numero_factura,
-        fecha: res.invoice.fecha_emision ? new Date(res.invoice.fecha_emision).toLocaleString() : new Date().toLocaleString(),
-        cliente_nombre: res.invoice.cliente_nombre || 'Consumidor Final',
-        cliente_doc: res.invoice.cliente_documento || '9999999999999',
-        cliente_telefono: res.invoice.cliente_telefono || 'N/A',
-        cliente_direccion: res.invoice.cliente_direccion || 'N/A',
-        cliente_email: res.invoice.cliente_correo || '',
-        metodo_pago: res.invoice.metodo_pago || 'Efectivo',
-        clave_acceso: res.invoice.clave_acceso_sri || '',
-        items: res.items || [],
-        subtotal: parseFloat(res.invoice.subtotal) || 0,
-        descuento: parseFloat(res.invoice.descuento) || 0,
-        abono: parseFloat(res.invoice.abono) || 0,
-        iva: parseFloat(res.invoice.impuesto) || 0,
-        total: parseFloat(res.invoice.total) || 0
-      };
-
-      const btnRenderWithTemplate = document.getElementById('btn-render-with-template');
-      if (btnRenderWithTemplate) {
-        btnRenderWithTemplate.onclick = async () => {
-          try {
-            const modelsRes = await window.api.getModelosDocumentos('Factura');
-            let models = (modelsRes && modelsRes.success && modelsRes.recordset) ? modelsRes.recordset : [];
-            if (models.length === 0) {
-              const allRes = await window.api.getModelosDocumentos('Todos');
-              models = (allRes && allRes.success && allRes.recordset) ? allRes.recordset : [];
-            }
-
-            if (models.length === 0) {
-              showToast('No tienes modelos de imagen registrados. Sube uno en el botón "Modelos".', 'warning');
-              return;
-            }
-
-            const chosenModel = models.find(m => m.es_predeterminado) || models[0];
-            showToast(`Estampando datos en plantilla "${chosenModel.nombre}" (OpenCV + Pillow)...`, 'info');
-
-            const resImg = await window.api.renderTemplateInvoice({
-              template_image: chosenModel.archivo_data,
-              invoice_data: window.currentPreviewInvoiceData,
-              options: {
-                auto_perspective: true,
-                auto_straighten: true,
-                enhance_contrast: true,
-                detect_tables: true
-              }
-            });
-
-            if (resImg && resImg.success) {
-              const container = document.getElementById('invoice-preview-container');
-              if (container) {
-                container.innerHTML = `
-                  <div style="text-align: center; background: #0f172a; padding: 15px; border-radius: 8px;">
-                    <div style="color: #10b981; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;">
-                      <i class="fa-solid fa-check-circle"></i> Renderizado Visual (OpenCV + NumPy + Pillow) • Plantilla: <strong>${escapeHtml(chosenModel.nombre)}</strong>
-                    </div>
-                    <img src="${resImg.image_base64}" style="max-width: 100%; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.5);" alt="Factura procesada">
-                  </div>
-                `;
-                showToast('¡Factura estampada sobre la plantilla visualmente!', 'success');
-              }
-            } else {
-              showToast('Error al renderizar plantilla: ' + (resImg ? resImg.message : ''), 'error');
-            }
-          } catch(e) {
-            console.error('Error renderizando con plantilla:', e);
-            showToast('Error al procesar plantilla.', 'error');
-          }
-        };
       }
 
       const btnPrinter = document.getElementById('btn-print-printer');
@@ -2160,7 +2245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnPdf) {
         btnPdf.onclick = async () => {
           showToast('Seleccionando ruta de guardado PDF...', 'info');
-          const pdfRes = await window.api.printInvoicePdf(html, res.invoice.numero_factura);
+          const pdfRes = await window.api.printInvoicePdf(html, invoice.numero_factura);
           if (pdfRes && pdfRes.success) {
             showToast(pdfRes.message, 'success');
           } else {
@@ -4398,9 +4483,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn test" title="Procesar y Estampar Factura de Prueba (OpenCV + Pillow)" data-action="test-render" style="color: #c084fc;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-              </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
               </button>
@@ -4418,67 +4500,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Clic en la miniatura → Abrir lightbox
       card.querySelector('.model-thumb-container').addEventListener('click', () => {
         openLightbox(model);
-      });
-
-      // Botón Probar / Renderizar con OpenCV + Pillow
-      card.querySelector('[data-action="test-render"]').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        showToast('Procesando imagen con OpenCV + NumPy y renderizando con Pillow...', 'info');
-
-        const sampleInvoice = {
-          numero_factura: '001-001-000000888',
-          fecha: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5),
-          cliente_nombre: 'Carlos E. Mendoza',
-          cliente_doc: '1723456789',
-          cliente_telefono: '+593 987 654 321',
-          cliente_direccion: 'Av. Amazonas N24-105 y Colón',
-          cliente_email: 'carlos.mendoza@email.com',
-          metodo_pago: 'Efectivo',
-          clave_acceso: '2108202601179234567800120010010000008881234567819',
-          items: [
-            { cantidad: 1, descripcion: 'Mantenimiento preventivo y cambio de pasta térmica', precio: 35.00, total: 35.00 },
-            { cantidad: 1, descripcion: 'Módulo de Memoria RAM 16GB DDR4 Kingston Fury', precio: 48.00, total: 48.00 },
-            { cantidad: 2, descripcion: 'Cable HDMI 2.1 Ultra High Speed 8K 2m', precio: 12.50, total: 25.00 }
-          ],
-          subtotal: 108.00,
-          descuento: 0.00,
-          abono: 20.00,
-          iva: 16.20,
-          total: 104.20
-        };
-
-        try {
-          const res = await window.api.renderTemplateInvoice({
-            template_image: model.archivo_data,
-            invoice_data: sampleInvoice,
-            options: {
-              auto_perspective: true,
-              auto_straighten: true,
-              enhance_contrast: true,
-              detect_tables: true
-            }
-          });
-
-          if (res && res.success) {
-            const prep = res.preprocessing_report || {};
-            const infoText = `Inclinación: ${prep.skew_angle_deg || 0}° | Perspectiva: ${prep.perspective_corrected ? 'Corregida' : 'OK'} | Tablas detectadas: ${prep.detected_table_boxes ? prep.detected_table_boxes.length : 0}`;
-            
-            openLightbox({
-              nombre: `Factura Muestra sobre: ${model.nombre}`,
-              tipo: model.tipo,
-              archivo_data: res.image_base64,
-              archivo_nombre: 'factura_procesada.png',
-              descripcion: `Procesado mediante OpenCV + NumPy y generado con Pillow. ${infoText}`,
-              fecha_subida: new Date().toISOString()
-            });
-            showToast('¡Factura renderizada con éxito sobre la plantilla!', 'success');
-          } else {
-            showToast('Error en el motor visual: ' + (res ? res.message : 'Desconocido'), 'error');
-          }
-        } catch (err) {
-          console.error(err);
-          showToast('Error al invocar motor de procesamiento: ' + err.message, 'error');
-        }
       });
 
       // Botón Ver

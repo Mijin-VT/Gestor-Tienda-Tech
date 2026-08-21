@@ -2307,56 +2307,113 @@ ipcMain.handle('db:set-predeterminado-modelo', async (event, { id, tipo }) => {
 });
 
 // ============================================================================
-// MOTOR DE PROCESAMIENTO VISUAL (OpenCV + NumPy + Pillow)
+// PROCESAMIENTO DE FACTURAS CON OPENCV + NUMPY + PILLOW
 // ============================================================================
 
-ipcMain.handle('engine:render-template-invoice', async (event, payload) => {
-  return new Promise((resolve) => {
-    try {
-      const { spawn } = require('child_process');
-      const scriptPath = path.join(__dirname, 'engine_invoice_processor.py');
-      const pythonExe = process.platform === 'win32' ? 'python' : 'python3';
+ipcMain.handle('app:process-invoice-template', async (event, params = {}) => {
+  const { invoiceData = {}, templateId = null, format = 'PNG', autoDeskew = true, autoPerspective = false } = params;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const { spawn } = require('child_process');
 
-      const child = spawn(pythonExe, [scriptPath, '--stdin'], {
-        cwd: __dirname,
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
-      });
+    let templateSource = null;
+    if (templateId) {
+      const res = await db.query('SELECT archivo_data FROM modelos_documentos WHERE id = @id', { id: parseInt(templateId, 10) });
+      if (res.recordset && res.recordset.length > 0) {
+        templateSource = res.recordset[0].archivo_data;
+      }
+    }
+
+    if (!templateSource) {
+      const tipo = invoiceData.tipo_documento || 'Factura';
+      const res = await db.query('SELECT archivo_data FROM modelos_documentos WHERE tipo = @tipo AND es_predeterminado = TRUE LIMIT 1', { tipo });
+      if (res.recordset && res.recordset.length > 0) {
+        templateSource = res.recordset[0].archivo_data;
+      }
+    }
+
+    if (!templateSource) {
+      const res = await db.query('SELECT archivo_data FROM modelos_documentos ORDER BY fecha_subida DESC LIMIT 1');
+      if (res.recordset && res.recordset.length > 0) {
+        templateSource = res.recordset[0].archivo_data;
+      }
+    }
+
+    const tempDir = path.join(app.getPath('temp'), 'gestor_tienda_tech');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const dataPath = path.join(tempDir, `invoice_data_${Date.now()}.json`);
+    fs.writeFileSync(dataPath, JSON.stringify(invoiceData, null, 2), 'utf-8');
+
+    let templatePath = null;
+    if (templateSource && templateSource.startsWith('data:image')) {
+      const matches = templateSource.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+      if (matches) {
+        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        templatePath = path.join(tempDir, `template_${Date.now()}.${ext}`);
+        fs.writeFileSync(templatePath, buffer);
+      }
+    }
+
+    if (!templatePath) {
+      templatePath = 'BLANK';
+    }
+
+    const scriptPath = path.join(__dirname, 'invoice_processor.py');
+    const outFileName = `factura_${(invoiceData.numero_factura || 'doc').replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${format.toLowerCase()}`;
+    const outDir = path.join(__dirname, 'FACTURAS');
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    const outputPath = path.join(outDir, outFileName);
+
+    const args = [
+      scriptPath,
+      '--template', templatePath,
+      '--data', dataPath,
+      '--output', outputPath,
+      '--format', format
+    ];
+
+    if (autoDeskew) args.push('--deskew');
+    if (autoPerspective) args.push('--perspective');
+
+    return new Promise((resolve) => {
+      const pyProcess = spawn('python', args, { cwd: __dirname });
 
       let stdoutData = '';
       let stderrData = '';
 
-      child.stdout.on('data', (chunk) => {
-        stdoutData += chunk.toString('utf-8');
+      pyProcess.stdout.on('data', (data) => {
+        stdoutData += data.toString();
       });
 
-      child.stderr.on('data', (chunk) => {
-        stderrData += chunk.toString('utf-8');
+      pyProcess.stderr.on('data', (data) => {
+        stderrData += data.toString();
       });
 
-      child.on('close', (code) => {
-        if (code !== 0) {
-          console.error('Error en engine_invoice_processor.py:', stderrData);
-          resolve({ success: false, message: stderrData || `El proceso terminó con código ${code}` });
-          return;
-        }
+      pyProcess.on('close', (code) => {
         try {
-          const parsed = JSON.parse(stdoutData.trim());
-          resolve(parsed);
-        } catch (e) {
-          console.error('Error parseando JSON de Python:', stdoutData);
-          resolve({ success: false, message: 'Respuesta inválida del motor de visión computacional.', raw: stdoutData });
+          if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
+          if (templatePath && templatePath !== 'BLANK' && fs.existsSync(templatePath)) fs.unlinkSync(templatePath);
+        } catch (e) {}
+
+        if (code === 0) {
+          try {
+            const parsed = JSON.parse(stdoutData.trim());
+            resolve({ success: true, ...parsed, outputPath });
+          } catch (e) {
+            resolve({ success: true, outputPath, rawOutput: stdoutData });
+          }
+        } else {
+          console.error('Error en invoice_processor.py:', stderrData || stdoutData);
+          resolve({ success: false, message: stderrData || 'Error en el motor de visión y renderizado.' });
         }
       });
+    });
 
-      child.on('error', (err) => {
-        console.error('Error al invocar Python:', err);
-        resolve({ success: false, message: `No se pudo iniciar Python: ${err.message}` });
-      });
-
-      child.stdin.write(JSON.stringify(payload));
-      child.stdin.end();
-    } catch (err) {
-      resolve({ success: false, message: err.message });
-    }
-  });
+  } catch (err) {
+    console.error('Error al procesar factura con OpenCV + Pillow:', err);
+    return { success: false, message: err.message };
+  }
 });
