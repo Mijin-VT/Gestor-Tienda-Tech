@@ -94,5 +94,11 @@ contextBridge.exposeInMainWorld('api', {
   getNotas: () => ipcRenderer.invoke('db:get-notas'),
   saveNota: (nota) => ipcRenderer.invoke('db:save-nota', nota),
   deleteNota: (id) => ipcRenderer.invoke('db:delete-nota', id),
-  toggleNotaFijada: (id) => ipcRenderer.invoke('db:toggle-nota-fijada', id)
+  toggleNotaFijada: (id) => ipcRenderer.invoke('db:toggle-nota-fijada', id),
+
+  // Modelos de Documentos (Facturas, Recibos, Notas de Venta)
+  getModelosDocumentos: (tipo) => ipcRenderer.invoke('db:get-modelos-documentos', tipo),
+  saveModeloDocumento: (modelo) => ipcRenderer.invoke('db:save-modelo-documento', modelo),
+  deleteModeloDocumento: (id) => ipcRenderer.invoke('db:delete-modelo-documento', id),
+  setPredeterminadoModelo: (id, tipo) => ipcRenderer.invoke('db:set-predeterminado-modelo', { id, tipo })
 });

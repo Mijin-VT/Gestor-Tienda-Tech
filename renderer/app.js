@@ -4194,3 +4194,392 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 })();
+
+// ============================================================================
+// MÓDULO DE MODELOS DE DOCUMENTOS (Facturas, Recibos, Notas de Venta)
+// ============================================================================
+
+(function () {
+  let allModels = [];
+  let currentTab = 'Todos';
+  let selectedFileBase64 = null;
+  let selectedFileName = '';
+  let selectedFileType = '';
+
+  const modelsModal       = document.getElementById('invoice-models-modal');
+  const modelsGrid        = document.getElementById('models-grid');
+  const modelsEmpty       = document.getElementById('models-empty-state');
+  const modelsSearchInput = document.getElementById('models-search-input');
+  const toggleUploadBtn   = document.getElementById('toggle-upload-model-btn');
+  const uploadPanel       = document.getElementById('models-upload-panel');
+  const closeUploadBtn    = document.getElementById('close-upload-panel-btn');
+  const cancelUploadBtn   = document.getElementById('cancel-upload-btn');
+  const modelForm         = document.getElementById('model-upload-form');
+  const modelFormTitle    = document.getElementById('model-form-title');
+  const modelEditId       = document.getElementById('model-edit-id');
+  const modelDropzone     = document.getElementById('model-dropzone');
+  const modelFileInput    = document.getElementById('model-file-input');
+  const dropzonePrompt    = document.getElementById('dropzone-prompt');
+  const previewBox        = document.getElementById('model-preview-box');
+  const previewImg        = document.getElementById('model-preview-img');
+  const fileInfoEl        = document.getElementById('model-file-info');
+  const modelNameInput    = document.getElementById('model-name-input');
+  const modelTypeSelect   = document.getElementById('model-type-select');
+  const modelDescInput    = document.getElementById('model-desc-input');
+  const modelIsDefault    = document.getElementById('model-is-default-check');
+
+  // Lightbox
+  const lightboxModal     = document.getElementById('model-lightbox-modal');
+  const lightboxImg       = document.getElementById('lightbox-img');
+  const lightboxTitle     = document.getElementById('lightbox-title');
+  const lightboxBadge     = document.getElementById('lightbox-badge-type');
+  const lightboxDesc      = document.getElementById('lightbox-desc');
+  const lightboxDate      = document.getElementById('lightbox-date');
+  const lightboxDownload  = document.getElementById('lightbox-download-btn');
+
+  const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+
+  function formatModelDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function getBadgeClass(tipo) {
+    if (!tipo) return 'otro';
+    const t = tipo.toLowerCase().trim();
+    if (t.includes('factura')) return 'factura';
+    if (t.includes('recibo')) return 'recibo';
+    if (t.includes('nota')) return 'nota-de-venta';
+    return 'otro';
+  }
+
+  // ── Abrir y Cerrar Modal Principal ──────────────────────────────────────────
+  window.openInvoiceModelsModal = async function () {
+    if (modelsModal) {
+      modelsModal.style.display = 'flex';
+      hideUploadPanel();
+      await loadAndRenderModels();
+    }
+  };
+
+  // ── Cargar modelos de base de datos ─────────────────────────────────────────
+  async function loadAndRenderModels() {
+    try {
+      const res = await window.api.getModelosDocumentos();
+      allModels = (res && res.success && res.recordset) ? res.recordset : [];
+    } catch (e) {
+      console.error('Error al cargar modelos:', e);
+      allModels = [];
+    }
+    renderModelsGrid();
+  }
+
+  // ── Renderizado de la cuadrícula ──────────────────────────────────────────
+  function renderModelsGrid() {
+    if (!modelsGrid) return;
+    const searchTerm = modelsSearchInput ? modelsSearchInput.value.trim().toLowerCase() : '';
+
+    let filtered = allModels;
+
+    // Filtro por pestaña
+    if (currentTab !== 'Todos') {
+      filtered = filtered.filter(m => (m.tipo || '').toLowerCase() === currentTab.toLowerCase());
+    }
+
+    // Filtro por búsqueda
+    if (searchTerm) {
+      filtered = filtered.filter(m =>
+        (m.nombre || '').toLowerCase().includes(searchTerm) ||
+        (m.descripcion || '').toLowerCase().includes(searchTerm) ||
+        (m.tipo || '').toLowerCase().includes(searchTerm)
+      );
+    }
+
+    modelsGrid.innerHTML = '';
+
+    if (filtered.length === 0) {
+      if (modelsEmpty) modelsEmpty.style.display = 'block';
+      return;
+    }
+    if (modelsEmpty) modelsEmpty.style.display = 'none';
+
+    filtered.forEach(model => {
+      const card = document.createElement('div');
+      card.className = `model-card${model.es_predeterminado ? ' is-default' : ''}`;
+      card.dataset.id = model.id;
+
+      const badgeClass = getBadgeClass(model.tipo);
+      const isDefaultBadge = model.es_predeterminado
+        ? `<div class="model-badge-default"><i class="fa-solid fa-star"></i> Predeterminado</div>`
+        : '';
+
+      card.innerHTML = `
+        <div class="model-thumb-container" title="Clic para ampliar">
+          <span class="model-badge-type ${badgeClass}">${escapeHtml(model.tipo || 'Documento')}</span>
+          ${isDefaultBadge}
+          <img src="${model.archivo_data || ''}" alt="${escapeHtml(model.nombre)}" loading="lazy">
+          <div class="model-thumb-overlay"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+        </div>
+        <div class="model-card-body">
+          <div class="model-card-title" title="${escapeHtml(model.nombre)}">${escapeHtml(model.nombre)}</div>
+          <div class="model-card-desc">${escapeHtml(model.descripcion || 'Sin descripción adicional')}</div>
+          <div class="model-card-footer">
+            <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
+            <div class="model-card-actions">
+              <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
+                <i class="fa-solid fa-star"></i>
+              </button>
+              <button class="model-action-btn view" title="Ver en alta resolución" data-action="view">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+              <button class="model-action-btn delete" title="Eliminar modelo" data-action="delete">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Clic en la miniatura → Abrir lightbox
+      card.querySelector('.model-thumb-container').addEventListener('click', () => {
+        openLightbox(model);
+      });
+
+      // Botón Ver
+      card.querySelector('[data-action="view"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLightbox(model);
+      });
+
+      // Botón Predeterminado
+      card.querySelector('[data-action="default"]').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await window.api.setPredeterminadoModelo(model.id, model.tipo);
+        showToast(`Modelo marcado como predeterminado para ${model.tipo}`, 'success');
+        await loadAndRenderModels();
+      });
+
+      // Botón Eliminar con confirmación
+      card.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (confirm(`¿Deseas eliminar el modelo "${model.nombre}"?`)) {
+          const res = await window.api.deleteModeloDocumento(model.id);
+          if (res && res.success) {
+            showToast('Modelo eliminado correctamente.', 'info');
+            await loadAndRenderModels();
+          } else {
+            showToast('Error al eliminar modelo.', 'error');
+          }
+        }
+      });
+
+      modelsGrid.appendChild(card);
+    });
+  }
+
+  // ── Lightbox / Visualizador en alta resolución ───────────────────────────────
+  function openLightbox(model) {
+    if (!lightboxModal) return;
+    lightboxImg.src = model.archivo_data || '';
+    lightboxTitle.textContent = model.nombre || 'Modelo';
+    lightboxBadge.textContent = model.tipo || 'Documento';
+    lightboxBadge.className = `model-badge-type ${getBadgeClass(model.tipo)}`;
+    lightboxBadge.style.position = 'static';
+    lightboxDesc.textContent = model.descripcion || '';
+    lightboxDate.textContent = `Subido el ${formatModelDate(model.fecha_subida)}`;
+    
+    lightboxDownload.href = model.archivo_data || '#';
+    lightboxDownload.download = `${(model.nombre || 'modelo').replace(/\s+/g, '_')}_${model.archivo_nombre || 'documento.png'}`;
+
+    lightboxModal.style.display = 'flex';
+  }
+
+  // ── Manejo de Archivos e Imágenes (Drag & Drop + File Input) ─────────────────
+  function handleFileSelection(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!VALID_EXTENSIONS.includes(ext) && !file.type.startsWith('image/')) {
+      showToast(`Formato no compatible (.${ext}). Usa JPG, JPEG, PNG, GIF, WebP o SVG.`, 'warning');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('La imagen excede el límite recomendado de 15MB.', 'warning');
+      return;
+    }
+
+    selectedFileName = file.name;
+    selectedFileType = file.type || `image/${ext}`;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedFileBase64 = e.target.result;
+      if (previewImg) previewImg.src = selectedFileBase64;
+      if (previewBox) previewBox.style.display = 'block';
+      if (dropzonePrompt) dropzonePrompt.style.display = 'none';
+      if (fileInfoEl) fileInfoEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+      // Autocompletar nombre si está vacío
+      if (modelNameInput && !modelNameInput.value.trim()) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        modelNameInput.value = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Drag & Drop Listeners ───────────────────────────────────────────────────
+  if (modelDropzone) {
+    modelDropzone.addEventListener('click', () => {
+      if (modelFileInput) modelFileInput.click();
+    });
+
+    modelDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      modelDropzone.classList.add('dragover');
+    });
+
+    modelDropzone.addEventListener('dragleave', () => {
+      modelDropzone.classList.remove('dragover');
+    });
+
+    modelDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      modelDropzone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFileSelection(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  if (modelFileInput) {
+    modelFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFileSelection(e.target.files[0]);
+      }
+    });
+  }
+
+  // ── Toggle / Mostrar / Ocultar Panel de Subida ──────────────────────────────
+  function showUploadPanel(isEdit = false, model = null) {
+    if (!uploadPanel) return;
+    uploadPanel.style.display = 'block';
+    uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (isEdit && model) {
+      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar Modelo';
+      if (modelEditId) modelEditId.value = model.id;
+      if (modelNameInput) modelNameInput.value = model.nombre || '';
+      if (modelTypeSelect) modelTypeSelect.value = model.tipo || 'Factura';
+      if (modelDescInput) modelDescInput.value = model.descripcion || '';
+      if (modelIsDefault) modelIsDefault.checked = !!model.es_predeterminado;
+      selectedFileBase64 = model.archivo_data || null;
+      selectedFileName = model.archivo_nombre || '';
+      selectedFileType = model.archivo_tipo || '';
+
+      if (selectedFileBase64 && previewImg) {
+        previewImg.src = selectedFileBase64;
+        if (previewBox) previewBox.style.display = 'block';
+        if (dropzonePrompt) dropzonePrompt.style.display = 'none';
+        if (fileInfoEl) fileInfoEl.textContent = model.archivo_nombre || 'Imagen actual';
+      }
+    } else {
+      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo';
+      if (modelForm) modelForm.reset();
+      if (modelEditId) modelEditId.value = '';
+      selectedFileBase64 = null;
+      selectedFileName = '';
+      selectedFileType = '';
+      if (previewBox) previewBox.style.display = 'none';
+      if (dropzonePrompt) dropzonePrompt.style.display = 'block';
+      if (modelFileInput) modelFileInput.value = '';
+    }
+  }
+
+  function hideUploadPanel() {
+    if (uploadPanel) uploadPanel.style.display = 'none';
+    if (modelForm) modelForm.reset();
+    if (modelEditId) modelEditId.value = '';
+    selectedFileBase64 = null;
+    selectedFileName = '';
+    selectedFileType = '';
+    if (previewBox) previewBox.style.display = 'none';
+    if (dropzonePrompt) dropzonePrompt.style.display = 'block';
+  }
+
+  if (toggleUploadBtn) {
+    toggleUploadBtn.addEventListener('click', () => {
+      if (uploadPanel.style.display === 'none' || !uploadPanel.style.display) {
+        showUploadPanel(false);
+      } else {
+        hideUploadPanel();
+      }
+    });
+  }
+
+  if (closeUploadBtn) closeUploadBtn.addEventListener('click', hideUploadPanel);
+  if (cancelUploadBtn) cancelUploadBtn.addEventListener('click', hideUploadPanel);
+
+  // ── Guardar Modelo (Submit Form) ────────────────────────────────────────────
+  if (modelForm) {
+    modelForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const editId = modelEditId && modelEditId.value ? parseInt(modelEditId.value, 10) : null;
+
+      if (!editId && !selectedFileBase64) {
+        showToast('Por favor selecciona o arrastra una imagen de modelo (JPG, PNG, GIF, WebP o SVG).', 'warning');
+        return;
+      }
+
+      const nombre = modelNameInput ? modelNameInput.value.trim() : '';
+      const tipo = modelTypeSelect ? modelTypeSelect.value : 'Factura';
+      const descripcion = modelDescInput ? modelDescInput.value.trim() : '';
+      const esPredeterminado = modelIsDefault ? modelIsDefault.checked : false;
+
+      if (!nombre) {
+        showToast('El nombre del modelo es obligatorio.', 'warning');
+        return;
+      }
+
+      const payload = {
+        id: editId,
+        nombre,
+        tipo,
+        descripcion,
+        archivo_nombre: selectedFileName || 'modelo.png',
+        archivo_tipo: selectedFileType || 'image/png',
+        archivo_data: selectedFileBase64,
+        es_predeterminado: esPredeterminado
+      };
+
+      const res = await window.api.saveModeloDocumento(payload);
+      if (res && res.success) {
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y guardado exitosamente!', 'success');
+        hideUploadPanel();
+        await loadAndRenderModels();
+      } else {
+        showToast('Error al guardar el modelo: ' + (res ? res.message : ''), 'error');
+      }
+    });
+  }
+
+  // ── Filtros por pestaña ─────────────────────────────────────────────────────
+  document.querySelectorAll('.models-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.models-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = btn.dataset.tab || 'Todos';
+      renderModelsGrid();
+    });
+  });
+
+  // ── Buscador en tiempo real ─────────────────────────────────────────────────
+  if (modelsSearchInput) {
+    modelsSearchInput.addEventListener('input', () => {
+      renderModelsGrid();
+    });
+  }
+
+})();

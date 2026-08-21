@@ -1866,6 +1866,155 @@
     </div>
   </div>
 
+  <!-- Modal: Gestor de Modelos de Documentos (Facturas, Recibos, Notas de Venta) -->
+  <div id="invoice-models-modal" class="modal-overlay" style="display: none; z-index: 1500;">
+    <div class="models-modal-card">
+      <div class="models-modal-header">
+        <div>
+          <h3 class="modal-title" style="font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Modelos de Documentos
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Plantillas y formatos de Facturas, Recibos y Notas de Venta</span>
+        </div>
+        <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div class="models-modal-body">
+        <!-- Barra de herramientas superior -->
+        <div class="models-toolbar">
+          <div class="models-tabs">
+            <button class="models-tab-btn active" data-tab="Todos">Todos</button>
+            <button class="models-tab-btn" data-tab="Factura">Facturas</button>
+            <button class="models-tab-btn" data-tab="Recibo">Recibos</button>
+            <button class="models-tab-btn" data-tab="Nota de Venta">Notas de Venta</button>
+            <button class="models-tab-btn" data-tab="Otro">Otros</button>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="position: relative;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+              <input type="text" id="models-search-input" class="form-input" placeholder="Buscar modelo..." style="padding-left: 32px; width: 180px; font-size: 0.85rem; height: 36px; margin: 0; background: var(--bg-primary);">
+            </div>
+            <button id="toggle-upload-model-btn" class="btn-primary" style="width: auto; padding: 8px 16px; font-size: 0.85rem; height: 36px; display: flex; align-items: center; gap: 6px; margin: 0;">
+              <i class="fa-solid fa-cloud-arrow-up"></i> <span>Subir Modelo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel colapsable de carga / edición de modelo -->
+        <div id="models-upload-panel" class="models-upload-panel" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 id="model-form-title" style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
+              <i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo
+            </h4>
+            <button type="button" id="close-upload-panel-btn" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;">&times;</button>
+          </div>
+
+          <form id="model-upload-form">
+            <input type="hidden" id="model-edit-id" value="">
+            
+            <!-- Zona de arrastre / selector de imagen -->
+            <div class="form-group" style="margin-bottom: 15px;">
+              <div id="model-dropzone" class="model-dropzone">
+                <input type="file" id="model-file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.svg,image/*" style="display: none;">
+                <div id="dropzone-prompt">
+                  <div class="model-dropzone-icon"><i class="fa-solid fa-images"></i></div>
+                  <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-main); margin-bottom: 4px;">
+                    Arrastra aquí tu imagen o <span style="color: var(--primary); text-decoration: underline;">haz clic para seleccionar</span>
+                  </div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">
+                    Formatos compatibles: JPG, JPEG, PNG, GIF, WebP, SVG
+                  </div>
+                </div>
+                <div id="model-preview-box" class="model-preview-box">
+                  <img id="model-preview-img" src="" alt="Vista previa">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;" id="model-file-info"></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="model-name-input" class="form-label">Nombre del Modelo / Plantilla *</label>
+                <input type="text" id="model-name-input" class="form-input" placeholder="Ej. Factura Comercial A4" required style="background: var(--bg-primary);">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="model-type-select" class="form-label">Tipo de Documento *</label>
+                <select id="model-type-select" class="form-input" required style="background: var(--bg-primary);">
+                  <option value="Factura">Factura</option>
+                  <option value="Recibo">Recibo</option>
+                  <option value="Nota de Venta">Nota de Venta</option>
+                  <option value="Comprobante de Entrega">Comprobante de Entrega</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+              <label for="model-desc-input" class="form-label">Descripción / Notas (Opcional)</label>
+              <input type="text" id="model-desc-input" class="form-input" placeholder="Ej. Diseño con membrete corporativo y tabla de repuestos" style="background: var(--bg-primary);">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">
+                <input type="checkbox" id="model-is-default-check" style="accent-color: var(--primary); width: 16px; height: 16px;">
+                <span>Establecer como modelo predeterminado para este tipo</span>
+              </label>
+
+              <div style="display: flex; gap: 10px;">
+                <button type="button" id="cancel-upload-btn" class="btn-secondary" style="width: auto; padding: 8px 16px; font-size: 0.85rem; margin: 0;">Cancelar</button>
+                <button type="submit" id="save-model-btn" class="btn-primary" style="width: auto; padding: 8px 20px; font-size: 0.85rem; margin: 0;">
+                  <i class="fa-solid fa-check"></i> Guardar Modelo
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Estado vacío -->
+        <div id="models-empty-state" style="display: none; text-align: center; padding: 50px 20px; color: var(--text-muted);">
+          <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.4;"><i class="fa-solid fa-file-invoice"></i></div>
+          <h4 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 6px;">No hay modelos registrados</h4>
+          <p style="font-size: 0.85rem; max-width: 380px; margin: 0 auto 18px;">Sube imágenes de tus facturas, recibos o notas de venta en formatos JPG, PNG, GIF, WebP o SVG para organizarlos.</p>
+          <button type="button" class="btn-primary" style="width: auto; padding: 8px 18px; margin: 0 auto; display: inline-flex; align-items: center; gap: 6px;" onclick="document.getElementById('toggle-upload-model-btn').click();">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Subir Primer Modelo
+          </button>
+        </div>
+
+        <!-- Cuadrícula de modelos -->
+        <div id="models-grid" class="models-grid">
+          <!-- Render dinámico de tarjetas -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Lightbox / Visualizador en alta resolución de Modelo -->
+  <div id="model-lightbox-modal" class="modal-overlay" style="display: none; z-index: 2500;">
+    <div class="lightbox-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span id="lightbox-badge-type" class="model-badge-type" style="position: static;">Factura</span>
+          <h3 id="lightbox-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);">Vista de Modelo</h3>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <a id="lightbox-download-btn" href="#" download="modelo.png" class="btn-secondary" style="width: auto; padding: 6px 14px; font-size: 0.82rem; margin: 0; text-decoration: none; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-download"></i> Descargar
+          </a>
+          <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="document.getElementById('model-lightbox-modal').style.display='none'">&times;</button>
+        </div>
+      </div>
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="Modelo completo">
+      </div>
+      <div style="padding-top: 10px; border-top: 1px solid var(--card-border); font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+        <span id="lightbox-desc"></span>
+        <span id="lightbox-date"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Custom JavaScript -->
   <script src="app.js"></script>
 </body>

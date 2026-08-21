@@ -2192,3 +2192,116 @@ ipcMain.handle('app:open-file', async (event, filePath) => {
     return { success: false, message: e.message };
   }
 });
+
+// ============================================================================
+// MODELOS DE DOCUMENTOS (FACTURAS, RECIBOS, NOTAS DE VENTA)
+// ============================================================================
+
+async function ensureModelosDocumentosTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS modelos_documentos (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(150) NOT NULL,
+      tipo VARCHAR(50) NOT NULL,
+      descripcion TEXT,
+      archivo_nombre VARCHAR(255),
+      archivo_tipo VARCHAR(50),
+      archivo_data TEXT NOT NULL,
+      es_predeterminado BOOLEAN DEFAULT FALSE,
+      fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+ipcMain.handle('db:get-modelos-documentos', async (event, tipo) => {
+  try {
+    await ensureModelosDocumentosTable();
+    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
+    const params = {};
+    if (tipo && tipo !== 'Todos') {
+      queryStr += ' WHERE tipo = @tipo';
+      params.tipo = tipo;
+    }
+    queryStr += ' ORDER BY es_predeterminado DESC, fecha_subida DESC';
+    const result = await db.query(queryStr, params);
+    return { success: true, recordset: result.recordset || [] };
+  } catch (err) {
+    console.error('Error al obtener modelos de documentos:', err);
+    return { success: false, message: err.message, recordset: [] };
+  }
+});
+
+ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
+  try {
+    await ensureModelosDocumentosTable();
+    const esPred = modelo.es_predeterminado === true || modelo.es_predeterminado === 'true' || modelo.es_predeterminado === 1;
+    const docTipo = modelo.tipo || 'Factura';
+
+    if (esPred) {
+      await db.query('UPDATE modelos_documentos SET es_predeterminado = FALSE WHERE tipo = @tipo', { tipo: docTipo });
+    }
+
+    if (modelo.id) {
+      await db.query(`
+        UPDATE modelos_documentos
+        SET nombre = @nombre, tipo = @tipo, descripcion = @descripcion,
+            archivo_nombre = COALESCE(@archivo_nombre, archivo_nombre),
+            archivo_tipo = COALESCE(@archivo_tipo, archivo_tipo),
+            archivo_data = COALESCE(@archivo_data, archivo_data),
+            es_predeterminado = @es_predeterminado
+        WHERE id = @id
+      `, {
+        nombre: modelo.nombre || 'Modelo sin título',
+        tipo: docTipo,
+        descripcion: modelo.descripcion || '',
+        archivo_nombre: modelo.archivo_nombre || null,
+        archivo_tipo: modelo.archivo_tipo || null,
+        archivo_data: modelo.archivo_data || null,
+        es_predeterminado: esPred,
+        id: parseInt(modelo.id, 10)
+      });
+      return { success: true, id: parseInt(modelo.id, 10) };
+    } else {
+      const result = await db.query(`
+        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, es_predeterminado)
+        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @es_predeterminado)
+        RETURNING id
+      `, {
+        nombre: modelo.nombre || 'Modelo sin título',
+        tipo: docTipo,
+        descripcion: modelo.descripcion || '',
+        archivo_nombre: modelo.archivo_nombre || 'documento.png',
+        archivo_tipo: modelo.archivo_tipo || 'image/png',
+        archivo_data: modelo.archivo_data,
+        es_predeterminado: esPred
+      });
+      const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;
+      return { success: true, id: newId };
+    }
+  } catch (err) {
+    console.error('Error al guardar modelo de documento:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('db:delete-modelo-documento', async (event, id) => {
+  try {
+    await db.query(`DELETE FROM modelos_documentos WHERE id = @id`, { id: parseInt(id, 10) });
+    return { success: true };
+  } catch (err) {
+    console.error('Error al eliminar modelo de documento:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('db:set-predeterminado-modelo', async (event, { id, tipo }) => {
+  try {
+    await ensureModelosDocumentosTable();
+    await db.query('UPDATE modelos_documentos SET es_predeterminado = FALSE WHERE tipo = @tipo', { tipo });
+    await db.query('UPDATE modelos_documentos SET es_predeterminado = TRUE WHERE id = @id', { id: parseInt(id, 10) });
+    return { success: true };
+  } catch (err) {
+    console.error('Error al establecer modelo predeterminado:', err);
+    return { success: false, message: err.message };
+  }
+});
