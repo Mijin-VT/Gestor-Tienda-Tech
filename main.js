@@ -2207,20 +2207,16 @@ async function ensureModelosDocumentosTable() {
       archivo_nombre VARCHAR(255),
       archivo_tipo VARCHAR(50),
       archivo_data TEXT NOT NULL,
-      config_cuadricula TEXT,
       es_predeterminado BOOLEAN DEFAULT FALSE,
       fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  try {
-    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS config_cuadricula TEXT;`);
-  } catch (e) {}
 }
 
 ipcMain.handle('db:get-modelos-documentos', async (event, tipo) => {
   try {
     await ensureModelosDocumentosTable();
-    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, config_cuadricula, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
+    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
     const params = {};
     if (tipo && tipo !== 'Todos') {
       queryStr += ' WHERE tipo = @tipo';
@@ -2252,7 +2248,6 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
             archivo_nombre = COALESCE(@archivo_nombre, archivo_nombre),
             archivo_tipo = COALESCE(@archivo_tipo, archivo_tipo),
             archivo_data = COALESCE(@archivo_data, archivo_data),
-            config_cuadricula = COALESCE(@config_cuadricula, config_cuadricula),
             es_predeterminado = @es_predeterminado
         WHERE id = @id
       `, {
@@ -2262,15 +2257,14 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
         archivo_nombre: modelo.archivo_nombre || null,
         archivo_tipo: modelo.archivo_tipo || null,
         archivo_data: modelo.archivo_data || null,
-        config_cuadricula: typeof modelo.config_cuadricula === 'object' ? JSON.stringify(modelo.config_cuadricula) : (modelo.config_cuadricula || null),
         es_predeterminado: esPred,
         id: parseInt(modelo.id, 10)
       });
       return { success: true, id: parseInt(modelo.id, 10) };
     } else {
       const result = await db.query(`
-        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, config_cuadricula, es_predeterminado)
-        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @config_cuadricula, @es_predeterminado)
+        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, es_predeterminado)
+        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @es_predeterminado)
         RETURNING id
       `, {
         nombre: modelo.nombre || 'Modelo sin título',
@@ -2279,7 +2273,6 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
         archivo_nombre: modelo.archivo_nombre || 'documento.png',
         archivo_tipo: modelo.archivo_tipo || 'image/png',
         archivo_data: modelo.archivo_data,
-        config_cuadricula: typeof modelo.config_cuadricula === 'object' ? JSON.stringify(modelo.config_cuadricula) : (modelo.config_cuadricula || null),
         es_predeterminado: esPred
       });
       const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;

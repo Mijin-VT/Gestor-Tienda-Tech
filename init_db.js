@@ -317,7 +317,6 @@ async function initializeTablesAndSeed(config) {
         archivo_nombre VARCHAR(255),
         archivo_tipo VARCHAR(50),
         archivo_data TEXT NOT NULL,
-        config_cuadricula TEXT,
         es_predeterminado BOOLEAN DEFAULT FALSE,
         fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );

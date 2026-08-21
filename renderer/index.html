@@ -1933,6 +1933,53 @@
               </div>
             </div>
 
+            <!-- Editor de Cuadrícula Tipo Excel sobre Imagen con Transparencia -->
+            <div id="excel-grid-calibration-section" style="display: none; margin-bottom: 20px;">
+              <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-table-cells" style="color: var(--success); font-size: 1.1rem;"></i>
+                    <strong style="color: var(--text-main); font-size: 0.92rem;">Alineación de Cuadrícula Excel</strong>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">(Haz clic o escribe en las celdas para ubicar tus columnas)</span>
+                  </div>
+
+                  <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
+                      <span><i class="fa-solid fa-circle-half-stroke"></i> Transparencia Imagen:</span>
+                      <input type="range" id="grid-img-opacity" min="0.1" max="1" step="0.05" value="0.45" style="width: 100px; accent-color: var(--primary);">
+                      <span id="grid-img-opacity-val" style="font-weight: 600; color: var(--text-main); width: 35px;">45%</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
+                      <span><i class="fa-solid fa-arrows-up-down"></i> Altura Filas:</span>
+                      <input type="range" id="grid-row-height" min="18" max="45" step="1" value="26" style="width: 80px; accent-color: var(--success);">
+                      <span id="grid-row-height-val" style="font-weight: 600; color: var(--text-main); width: 30px;">26px</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
+                      <span><i class="fa-solid fa-arrows-left-right"></i> Ancho Col:</span>
+                      <input type="range" id="grid-col-width" min="30" max="100" step="2" value="55" style="width: 80px; accent-color: var(--warning);">
+                      <span id="grid-col-width-val" style="font-weight: 600; color: var(--text-main); width: 35px;">55px</span>
+                    </div>
+
+                    <button type="button" id="btn-reset-grid-calib" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.78rem; margin: 0;">
+                      <i class="fa-solid fa-rotate-left"></i> Restablecer
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Contenedor con la imagen transparente y la hoja excel interactiva -->
+                <div class="excel-sheet-viewport" id="excel-sheet-viewport">
+                  <div class="excel-sheet-canvas-container" id="excel-sheet-canvas-container">
+                    <img id="excel-bg-img" class="excel-bg-img" src="" alt="Fondo Factura">
+                    <div class="excel-grid-overlay" id="excel-grid-overlay">
+                      <!-- Generado dinámicamente con letras de columna (A-P...) y números de fila (1-35...) -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
               <div class="form-group" style="margin-bottom: 0;">
                 <label for="model-name-input" class="form-label">Nombre del Modelo / Plantilla *</label>
@@ -1954,77 +2001,6 @@
             <div class="form-group" style="margin-bottom: 15px;">
               <label for="model-desc-input" class="form-label">Descripción / Notas (Opcional)</label>
               <input type="text" id="model-desc-input" class="form-input" placeholder="Ej. Diseño con membrete corporativo y tabla de repuestos" style="background: var(--bg-primary);">
-            </div>
-
-            <!-- Panel de Calibración: Imagen semi-transparente + Cuadrícula tipo Excel -->
-            <div id="model-calibration-panel" class="model-calibration-panel" style="display: none;">
-              <div class="calibration-header-bar">
-                <div style="font-weight: 600; font-size: 0.9rem; color: #10b981; display: flex; align-items: center; gap: 8px;">
-                  <i class="fa-solid fa-table-cells"></i> Calibración de Columnas y Filas (Cuadrícula Excel)
-                </div>
-
-                <div class="calibration-tools">
-                  <!-- Control de Transparencia de Imagen -->
-                  <div class="opacity-slider-group" title="Ajusta la transparencia de la imagen para ver los campos">
-                    <label for="model-opacity-slider"><i class="fa-solid fa-circle-half-stroke"></i> Opacidad:</label>
-                    <input type="range" id="model-opacity-slider" min="10" max="100" value="55" step="5">
-                    <span id="opacity-val-badge" class="opacity-val-badge">55%</span>
-                  </div>
-
-                  <!-- Ajuste de Filas y Columnas -->
-                  <div class="grid-dimension-controls" title="Filas de la cuadrícula">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Filas:</span>
-                    <button type="button" id="grid-add-row-btn" class="grid-btn-pill"><i class="fa-solid fa-plus"></i></button>
-                    <span id="grid-row-count-badge" style="font-size: 0.78rem; font-weight: 700; color: #fff;">4</span>
-                    <button type="button" id="grid-remove-row-btn" class="grid-btn-pill"><i class="fa-solid fa-minus"></i></button>
-                  </div>
-
-                  <div class="grid-dimension-controls" title="Columnas de la cuadrícula">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Cols:</span>
-                    <button type="button" id="grid-add-col-btn" class="grid-btn-pill"><i class="fa-solid fa-plus"></i></button>
-                    <span id="grid-col-count-badge" style="font-size: 0.78rem; font-weight: 700; color: #fff;">5</span>
-                    <button type="button" id="grid-remove-col-btn" class="grid-btn-pill"><i class="fa-solid fa-minus"></i></button>
-                  </div>
-
-                  <!-- Mover Posición de la Cuadrícula -->
-                  <div class="grid-nudge-controls" title="Mover la cuadrícula para alinearla con la factura">
-                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 2px;">Ubicar:</span>
-                    <button type="button" id="grid-move-up-btn" class="grid-nudge-btn" title="Subir cuadrícula"><i class="fa-solid fa-arrow-up"></i></button>
-                    <button type="button" id="grid-move-down-btn" class="grid-nudge-btn" title="Bajar cuadrícula"><i class="fa-solid fa-arrow-down"></i></button>
-                    <button type="button" id="grid-move-left-btn" class="grid-nudge-btn" title="Mover a la izquierda"><i class="fa-solid fa-arrow-left"></i></button>
-                    <button type="button" id="grid-move-right-btn" class="grid-nudge-btn" title="Mover a la derecha"><i class="fa-solid fa-arrow-right"></i></button>
-                    <button type="button" id="grid-reset-pos-btn" class="grid-btn-pill" style="margin-left: 4px;" title="Restablecer posición"><i class="fa-solid fa-arrows-rotate"></i> Reset</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Canvas / Área de trabajo con imagen semi-transparente y cuadrícula superpuesta -->
-              <div class="model-canvas-stage">
-                <div id="model-canvas-frame" class="model-canvas-frame">
-                  <!-- Imagen de fondo con opacidad -->
-                  <img id="model-calibration-bg-img" class="model-canvas-bg-img" src="" alt="Factura Plantilla">
-
-                  <!-- Cuadrícula interactiva tipo Excel superpuesta -->
-                  <div id="excel-overlay-container" class="excel-overlay-container">
-                    <table id="excel-grid-table" class="excel-grid-table">
-                      <thead>
-                        <tr id="excel-grid-header-row">
-                          <th style="width: 28px; background: #064e3b;">#</th>
-                          <!-- Cabeceras de columnas generadas dinámicamente -->
-                        </tr>
-                      </thead>
-                      <tbody id="excel-grid-tbody">
-                        <!-- Filas de celdas generadas dinámicamente -->
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              <div class="calibration-tip-box">
-                <i class="fa-solid fa-circle-info" style="color: #10b981; font-size: 1rem;"></i>
-                <span><strong>Modo Calibración:</strong> La imagen de la factura se muestra semi-transparente de fondo. Utiliza los selectores superiores de cada columna (A, B, C, D, E) para asignar qué dato corresponde (Cantidad, Código, Descripción, Precio Unitario, Total) y usa los botones de flechas para hacerla calzar con exactitud sobre las filas preimpresas.</span>
-              </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">

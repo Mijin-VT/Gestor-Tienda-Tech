@@ -4206,46 +4206,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedFileName = '';
   let selectedFileType = '';
 
-  // Configuración predeterminada de la cuadrícula interactiva tipo Excel
-  let defaultGridConfig = {
-    top: 31,     // Posición vertical (%) sobre la imagen
-    left: 3,     // Posición horizontal (%)
-    width: 94,   // Ancho relativo (%)
-    rows: 4,     // Número inicial de filas
-    cols: 5,     // Número inicial de columnas
-    opacity: 55, // Opacidad inicial de la imagen (55% = semi-transparente)
-    columns: [
-      { letter: 'A', field: 'CANTIDAD', label: 'CANTIDAD', width: 12 },
-      { letter: 'B', field: 'CODIGO', label: 'CÓDIGO', width: 18 },
-      { letter: 'C', field: 'DESCRIPCION', label: 'DESCRIPCIÓN', width: 42 },
-      { letter: 'D', field: 'PRECIO_UNITARIO', label: 'V. UNITARIO', width: 14 },
-      { letter: 'E', field: 'TOTAL', label: 'V. TOTAL', width: 14 }
-    ]
-  };
-
-  let activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
-
-  // Datos de ejemplo para las filas tipo Excel
-  const sampleRowData = [
-    ['1', '00442-SC', 'COMPUERTA LOGICA AND TRIPLE 3-IN 14P DIP', '1.2599', '1.2599'],
-    ['2', '00440-SC', 'COMPUERTA LOGICA AND QUAD 14P DIP', '0.9099', '1.8198'],
-    ['25', '00050-CPD', 'RESISTENCIAS FIJAS R-1/4W 330 OHM', '0.0599', '1.4975'],
-    ['2', '00138-CPD', 'RESISTENCIAS FIJAS R-1/4W 4.7K OHM', '0.0499', '0.0998'],
-    ['3', '00760-FEL', 'SWITCH INTERRUPTOR TIPO DIP SWITCH 4 POS', '0.4599', '1.3797'],
-    ['1', '00303-CPD', 'CAPACITORES CE 0.1UF 50V', '0.1799', '0.1799'],
-    ['1', '00410-SC', 'TIMER OSCILADOR IC LM555CN/NTE955M 8P DIP', '0.3599', '0.3599'],
-    ['1', '00895-DE', 'LED 5MM NORMAL VERDE 2P', '0.1099', '0.1099']
-  ];
-
-  const FIELD_OPTIONS = [
-    { value: 'CANTIDAD', text: 'CANTIDAD' },
-    { value: 'CODIGO', text: 'CÓDIGO' },
-    { value: 'DESCRIPCION', text: 'DESCRIPCIÓN' },
-    { value: 'PRECIO_UNITARIO', text: 'VALOR UNITARIO' },
-    { value: 'TOTAL', text: 'VALOR TOTAL' },
-    { value: 'OTRO', text: 'OTRO CAMPO' }
-  ];
-
   const modelsModal       = document.getElementById('invoice-models-modal');
   const modelsGrid        = document.getElementById('models-grid');
   const modelsEmpty       = document.getElementById('models-empty-state');
@@ -4267,26 +4227,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelTypeSelect   = document.getElementById('model-type-select');
   const modelDescInput    = document.getElementById('model-desc-input');
   const modelIsDefault    = document.getElementById('model-is-default-check');
-
-  // Elementos de calibración y cuadrícula Excel
-  const calibrationPanel    = document.getElementById('model-calibration-panel');
-  const calibrationBgImg    = document.getElementById('model-calibration-bg-img');
-  const excelContainer      = document.getElementById('excel-overlay-container');
-  const excelHeaderRow      = document.getElementById('excel-grid-header-row');
-  const excelTbody          = document.getElementById('excel-grid-tbody');
-  const opacitySlider       = document.getElementById('model-opacity-slider');
-  const opacityValBadge     = document.getElementById('opacity-val-badge');
-  const rowCountBadge       = document.getElementById('grid-row-count-badge');
-  const colCountBadge       = document.getElementById('grid-col-count-badge');
-  const addRowBtn           = document.getElementById('grid-add-row-btn');
-  const removeRowBtn        = document.getElementById('grid-remove-row-btn');
-  const addColBtn           = document.getElementById('grid-add-col-btn');
-  const removeColBtn        = document.getElementById('grid-remove-col-btn');
-  const moveUpBtn           = document.getElementById('grid-move-up-btn');
-  const moveDownBtn         = document.getElementById('grid-move-down-btn');
-  const moveLeftBtn         = document.getElementById('grid-move-left-btn');
-  const moveRightBtn        = document.getElementById('grid-move-right-btn');
-  const resetPosBtn         = document.getElementById('grid-reset-pos-btn');
 
   // Lightbox
   const lightboxModal     = document.getElementById('model-lightbox-modal');
@@ -4314,10 +4254,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'otro';
   }
 
-  function getColLetter(index) {
-    return String.fromCharCode(65 + index); // A, B, C, D...
-  }
-
   // ── Abrir y Cerrar Modal Principal ──────────────────────────────────────────
   window.openInvoiceModelsModal = async function () {
     if (modelsModal) {
@@ -4339,177 +4275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderModelsGrid();
   }
 
-  // ── Renderizado de la cuadrícula tipo Excel ────────────────────────────────
-  function renderExcelGrid() {
-    if (!excelHeaderRow || !excelTbody || !excelContainer) return;
-
-    // Actualizar posición de la cuadrícula
-    excelContainer.style.top = `${activeGridConfig.top}%`;
-    excelContainer.style.left = `${activeGridConfig.left}%`;
-    excelContainer.style.width = `${activeGridConfig.width}%`;
-
-    // Actualizar badges
-    if (rowCountBadge) rowCountBadge.textContent = activeGridConfig.rows;
-    if (colCountBadge) colCountBadge.textContent = activeGridConfig.cols;
-
-    // 1. Renderizar Cabecera de Columnas (Headers A, B, C...)
-    excelHeaderRow.innerHTML = `<th style="width: 28px; background: #064e3b; color: #a7f3d0; font-weight: bold; text-align: center;">#</th>`;
-
-    activeGridConfig.columns.forEach((col, idx) => {
-      const th = document.createElement('th');
-      th.style.width = `${col.width || (100 / activeGridConfig.cols)}%`;
-
-      const optionsHtml = FIELD_OPTIONS.map(opt =>
-        `<option value="${opt.value}" ${col.field === opt.value ? 'selected' : ''}>${opt.text}</option>`
-      ).join('');
-
-      th.innerHTML = `
-        <div class="excel-col-header-box">
-          <span class="excel-col-letter">${col.letter || getColLetter(idx)}</span>
-          <select class="excel-header-select" data-col-idx="${idx}">
-            ${optionsHtml}
-          </select>
-        </div>
-      `;
-
-      th.querySelector('select').addEventListener('change', (e) => {
-        activeGridConfig.columns[idx].field = e.target.value;
-        const selectedOpt = FIELD_OPTIONS.find(o => o.value === e.target.value);
-        activeGridConfig.columns[idx].label = selectedOpt ? selectedOpt.text : e.target.value;
-      });
-
-      excelHeaderRow.appendChild(th);
-    });
-
-    // 2. Renderizar Filas y Celdas de Datos (1, 2, 3...)
-    excelTbody.innerHTML = '';
-    for (let r = 0; r < activeGridConfig.rows; r++) {
-      const tr = document.createElement('tr');
-
-      // Celda del número de fila
-      const rowNumTd = document.createElement('td');
-      rowNumTd.className = 'excel-row-header-cell';
-      rowNumTd.textContent = r + 1;
-      tr.appendChild(rowNumTd);
-
-      // Celdas de datos con valores de ejemplo
-      activeGridConfig.columns.forEach((col, cIdx) => {
-        const td = document.createElement('td');
-        const sampleVal = (sampleRowData[r] && sampleRowData[r][cIdx] !== undefined)
-          ? sampleRowData[r][cIdx]
-          : (r === 0 ? col.label : '');
-
-        td.innerHTML = `<input type="text" class="excel-cell-input" value="${escapeHtml(sampleVal)}" placeholder="Fila ${r+1} Col ${col.letter}">`;
-        tr.appendChild(td);
-      });
-
-      excelTbody.appendChild(tr);
-    }
-  }
-
-  // ── Controles de Calibración de la Cuadrícula ───────────────────────────────
-  if (opacitySlider) {
-    opacitySlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      activeGridConfig.opacity = val;
-      if (opacityValBadge) opacityValBadge.textContent = `${val}%`;
-      if (calibrationBgImg) calibrationBgImg.style.opacity = (val / 100).toString();
-    });
-  }
-
-  if (addRowBtn) {
-    addRowBtn.addEventListener('click', () => {
-      if (activeGridConfig.rows < 15) {
-        activeGridConfig.rows++;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (removeRowBtn) {
-    removeRowBtn.addEventListener('click', () => {
-      if (activeGridConfig.rows > 1) {
-        activeGridConfig.rows--;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (addColBtn) {
-    addColBtn.addEventListener('click', () => {
-      if (activeGridConfig.cols < 8) {
-        const newIdx = activeGridConfig.cols;
-        const newLetter = getColLetter(newIdx);
-        activeGridConfig.columns.push({
-          letter: newLetter,
-          field: 'OTRO',
-          label: `COLUMNA ${newLetter}`,
-          width: 15
-        });
-        activeGridConfig.cols++;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (removeColBtn) {
-    removeColBtn.addEventListener('click', () => {
-      if (activeGridConfig.cols > 2) {
-        activeGridConfig.columns.pop();
-        activeGridConfig.cols--;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  // Mover Posición (Ubicar cuadrícula sobre la factura)
-  if (moveUpBtn) {
-    moveUpBtn.addEventListener('click', () => {
-      if (activeGridConfig.top > 2) {
-        activeGridConfig.top -= 1;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (moveDownBtn) {
-    moveDownBtn.addEventListener('click', () => {
-      if (activeGridConfig.top < 85) {
-        activeGridConfig.top += 1;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (moveLeftBtn) {
-    moveLeftBtn.addEventListener('click', () => {
-      if (activeGridConfig.left > 0.5) {
-        activeGridConfig.left -= 0.5;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (moveRightBtn) {
-    moveRightBtn.addEventListener('click', () => {
-      if (activeGridConfig.left < 20) {
-        activeGridConfig.left += 0.5;
-        renderExcelGrid();
-      }
-    });
-  }
-
-  if (resetPosBtn) {
-    resetPosBtn.addEventListener('click', () => {
-      activeGridConfig.top = defaultGridConfig.top;
-      activeGridConfig.left = defaultGridConfig.left;
-      activeGridConfig.width = defaultGridConfig.width;
-      renderExcelGrid();
-      showToast('Posición de cuadrícula restablecida.', 'info');
-    });
-  }
-
-  // ── Renderizado de la lista de modelos (Cards) ──────────────────────────────
+  // ── Renderizado de la cuadrícula ──────────────────────────────────────────
   function renderModelsGrid() {
     if (!modelsGrid) return;
     const searchTerm = modelsSearchInput ? modelsSearchInput.value.trim().toLowerCase() : '';
@@ -4561,9 +4327,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn edit" title="Editar y calibrar cuadrícula" data-action="edit">
-                <i class="fa-solid fa-pen"></i>
-              </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
               </button>
@@ -4581,12 +4344,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Clic en la miniatura → Abrir lightbox
       card.querySelector('.model-thumb-container').addEventListener('click', () => {
         openLightbox(model);
-      });
-
-      // Botón Editar
-      card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        showUploadPanel(true, model);
       });
 
       // Botón Ver
@@ -4638,6 +4395,137 @@ document.addEventListener('DOMContentLoaded', () => {
     lightboxModal.style.display = 'flex';
   }
 
+  // ── Elementos de Calibración Cuadrícula Excel ──────────────────────────────
+  const gridCalibSection = document.getElementById('excel-grid-calibration-section');
+  const excelBgImg       = document.getElementById('excel-bg-img');
+  const excelGridOverlay = document.getElementById('excel-grid-overlay');
+  const opacitySlider    = document.getElementById('grid-img-opacity');
+  const opacityVal       = document.getElementById('grid-img-opacity-val');
+  const rowHeightSlider  = document.getElementById('grid-row-height');
+  const rowHeightVal     = document.getElementById('grid-row-height-val');
+  const colWidthSlider   = document.getElementById('grid-col-width');
+  const colWidthVal      = document.getElementById('grid-col-width-val');
+  const btnResetGrid     = document.getElementById('btn-reset-grid-calib');
+
+  let gridRowsCount = 35;
+  let gridColsCount = 18; // A to R
+  let currentRowHeight = 26;
+  let currentColWidth = 55;
+  let currentOpacity = 0.45;
+
+  function getColumnLetter(colIndex) {
+    let temp, letter = '';
+    while (colIndex > 0) {
+      temp = (colIndex - 1) % 26;
+      letter = String.fromCharCode(65 + temp) + letter;
+      colIndex = (colIndex - temp - 1) / 26;
+    }
+    return letter;
+  }
+
+  // ── Generar Cuadrícula Excel Interactiva ────────────────────────────────────
+  function buildExcelGridOverlay() {
+    if (!excelGridOverlay) return;
+    excelGridOverlay.innerHTML = '';
+
+    // Fila 0: Encabezados de Columna (A, B, C, D, E...)
+    const headerRow = document.createElement('div');
+    headerRow.className = 'excel-row';
+
+    // Esquina superior izquierda
+    const corner = document.createElement('div');
+    corner.className = 'excel-header-corner';
+    headerRow.appendChild(corner);
+
+    for (let c = 1; c <= gridColsCount; c++) {
+      const colHeader = document.createElement('div');
+      colHeader.className = 'excel-header-col';
+      colHeader.textContent = getColumnLetter(c);
+      colHeader.style.width = `${currentColWidth}px`;
+      colHeader.style.minWidth = `${currentColWidth}px`;
+      headerRow.appendChild(colHeader);
+    }
+    excelGridOverlay.appendChild(headerRow);
+
+    // Filas de datos (1, 2, 3, 4, 5... 35)
+    for (let r = 1; r <= gridRowsCount; r++) {
+      const row = document.createElement('div');
+      row.className = 'excel-row';
+
+      // Cabecera de fila (1, 2, 3...)
+      const rowHeader = document.createElement('div');
+      rowHeader.className = 'excel-header-row';
+      rowHeader.textContent = r;
+      rowHeader.style.height = `${currentRowHeight}px`;
+      rowHeader.style.lineHeight = `${currentRowHeight}px`;
+      row.appendChild(rowHeader);
+
+      // Celdas editables
+      for (let c = 1; c <= gridColsCount; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'excel-cell';
+        cell.dataset.row = r;
+        cell.dataset.col = getColumnLetter(c);
+        cell.style.width = `${currentColWidth}px`;
+        cell.style.minWidth = `${currentColWidth}px`;
+        cell.style.height = `${currentRowHeight}px`;
+        cell.contentEditable = 'true';
+        cell.spellcheck = false;
+
+        cell.addEventListener('focus', () => {
+          cell.classList.add('selected');
+        });
+        cell.addEventListener('blur', () => {
+          cell.classList.remove('selected');
+        });
+
+        row.appendChild(cell);
+      }
+      excelGridOverlay.appendChild(row);
+    }
+  }
+
+  // ── Eventos de sliders de calibración ───────────────────────────────────────
+  if (opacitySlider) {
+    opacitySlider.addEventListener('input', (e) => {
+      currentOpacity = parseFloat(e.target.value);
+      if (opacityVal) opacityVal.textContent = `${Math.round(currentOpacity * 100)}%`;
+      if (excelBgImg) excelBgImg.style.opacity = currentOpacity;
+    });
+  }
+
+  if (rowHeightSlider) {
+    rowHeightSlider.addEventListener('input', (e) => {
+      currentRowHeight = parseInt(e.target.value, 10);
+      if (rowHeightVal) rowHeightVal.textContent = `${currentRowHeight}px`;
+      buildExcelGridOverlay();
+    });
+  }
+
+  if (colWidthSlider) {
+    colWidthSlider.addEventListener('input', (e) => {
+      currentColWidth = parseInt(e.target.value, 10);
+      if (colWidthVal) colWidthVal.textContent = `${currentColWidth}px`;
+      buildExcelGridOverlay();
+    });
+  }
+
+  if (btnResetGrid) {
+    btnResetGrid.addEventListener('click', () => {
+      currentRowHeight = 26;
+      currentColWidth = 55;
+      currentOpacity = 0.45;
+      if (rowHeightSlider) rowHeightSlider.value = 26;
+      if (rowHeightVal) rowHeightVal.textContent = '26px';
+      if (colWidthSlider) colWidthSlider.value = 55;
+      if (colWidthVal) colWidthVal.textContent = '55px';
+      if (opacitySlider) opacitySlider.value = 0.45;
+      if (opacityVal) opacityVal.textContent = '45%';
+      if (excelBgImg) excelBgImg.style.opacity = 0.45;
+      buildExcelGridOverlay();
+    });
+  }
+
   // ── Manejo de Archivos e Imágenes (Drag & Drop + File Input) ─────────────────
   function handleFileSelection(file) {
     if (!file) return;
@@ -4663,15 +4551,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dropzonePrompt) dropzonePrompt.style.display = 'none';
       if (fileInfoEl) fileInfoEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
 
-      // Cargar en el canvas de calibración con transparencia y activar la cuadrícula Excel
-      if (calibrationBgImg) {
-        calibrationBgImg.src = selectedFileBase64;
-        calibrationBgImg.style.opacity = (activeGridConfig.opacity / 100).toString();
+      // Mostrar y calibrar cuadrícula Excel sobre la imagen con transparencia
+      if (excelBgImg) {
+        excelBgImg.src = selectedFileBase64;
+        excelBgImg.style.opacity = currentOpacity;
       }
-      if (calibrationPanel) {
-        calibrationPanel.style.display = 'flex';
+      if (gridCalibSection) {
+        gridCalibSection.style.display = 'block';
+        buildExcelGridOverlay();
       }
-      renderExcelGrid();
 
       // Autocompletar nombre si está vacío
       if (modelNameInput && !modelNameInput.value.trim()) {
@@ -4721,7 +4609,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (isEdit && model) {
-      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar y Calibrar Modelo';
+      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar Modelo';
       if (modelEditId) modelEditId.value = model.id;
       if (modelNameInput) modelNameInput.value = model.nombre || '';
       if (modelTypeSelect) modelTypeSelect.value = model.tipo || 'Factura';
@@ -4731,34 +4619,20 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileName = model.archivo_nombre || '';
       selectedFileType = model.archivo_tipo || '';
 
-      // Cargar configuración de cuadrícula guardada si existe
-      if (model.config_cuadricula) {
-        try {
-          activeGridConfig = typeof model.config_cuadricula === 'string'
-            ? JSON.parse(model.config_cuadricula)
-            : model.config_cuadricula;
-        } catch (e) {
-          activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
-        }
-      } else {
-        activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
-      }
-
-      if (opacitySlider) opacitySlider.value = activeGridConfig.opacity || 55;
-      if (opacityValBadge) opacityValBadge.textContent = `${activeGridConfig.opacity || 55}%`;
-
       if (selectedFileBase64 && previewImg) {
         previewImg.src = selectedFileBase64;
         if (previewBox) previewBox.style.display = 'block';
         if (dropzonePrompt) dropzonePrompt.style.display = 'none';
         if (fileInfoEl) fileInfoEl.textContent = model.archivo_nombre || 'Imagen actual';
 
-        if (calibrationBgImg) {
-          calibrationBgImg.src = selectedFileBase64;
-          calibrationBgImg.style.opacity = ((activeGridConfig.opacity || 55) / 100).toString();
+        if (excelBgImg) {
+          excelBgImg.src = selectedFileBase64;
+          excelBgImg.style.opacity = currentOpacity;
         }
-        if (calibrationPanel) calibrationPanel.style.display = 'flex';
-        renderExcelGrid();
+        if (gridCalibSection) {
+          gridCalibSection.style.display = 'block';
+          buildExcelGridOverlay();
+        }
       }
     } else {
       if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo';
@@ -4767,13 +4641,10 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileBase64 = null;
       selectedFileName = '';
       selectedFileType = '';
-      activeGridConfig = JSON.parse(JSON.stringify(defaultGridConfig));
-      if (opacitySlider) opacitySlider.value = 55;
-      if (opacityValBadge) opacityValBadge.textContent = '55%';
       if (previewBox) previewBox.style.display = 'none';
       if (dropzonePrompt) dropzonePrompt.style.display = 'block';
       if (modelFileInput) modelFileInput.value = '';
-      if (calibrationPanel) calibrationPanel.style.display = 'none';
+      if (gridCalibSection) gridCalibSection.style.display = 'none';
     }
   }
 
@@ -4786,7 +4657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFileType = '';
     if (previewBox) previewBox.style.display = 'none';
     if (dropzonePrompt) dropzonePrompt.style.display = 'block';
-    if (calibrationPanel) calibrationPanel.style.display = 'none';
+    if (gridCalibSection) gridCalibSection.style.display = 'none';
   }
 
   if (toggleUploadBtn) {
@@ -4832,13 +4703,12 @@ document.addEventListener('DOMContentLoaded', () => {
         archivo_nombre: selectedFileName || 'modelo.png',
         archivo_tipo: selectedFileType || 'image/png',
         archivo_data: selectedFileBase64,
-        config_cuadricula: activeGridConfig,
         es_predeterminado: esPredeterminado
       };
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo y calibración de cuadrícula actualizados.' : '¡Modelo y cuadrícula de calibración guardados exitosamente!', 'success');
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y calibrado exitosamente!', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
       } else {
