@@ -4327,8 +4327,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn calibrate" title="Diseñar / Calibrar Campos y Cuadrícula" data-action="calibrate" style="color: #60a5fa; border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.1);">
-                <i class="fa-solid fa-crosshairs"></i>
+              <button class="model-action-btn edit-grid" title="Editar Posición de Campos y Cuadrícula" data-action="editor" style="color: var(--primary); border-color: rgba(37, 99, 235, 0.4); background: rgba(37, 99, 235, 0.1);">
+                <i class="fa-solid fa-arrows-up-down-left-right"></i>
               </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
@@ -4349,10 +4349,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openLightbox(model);
       });
 
-      // Botón Calibrar
-      card.querySelector('[data-action="calibrate"]').addEventListener('click', (e) => {
+      // Botón Editar Cuadrícula y Campos
+      card.querySelector('[data-action="editor"]').addEventListener('click', (e) => {
         e.stopPropagation();
-        openCalibratorModal(model);
+        openModelEditor(model);
       });
 
       // Botón Ver
@@ -4386,6 +4386,344 @@ document.addEventListener('DOMContentLoaded', () => {
       modelsGrid.appendChild(card);
     });
   }
+
+  // ── 18 CAMPOS ESPECIFICADOS POR EL USUARIO ─────────────────────────────────
+  const DEFAULT_DOCUMENT_FIELDS = [
+    // ENCABEZADO
+    { id: 'fecha_emision', label: 'FECHA DE EMISIÓN:', category: 'encabezado', sample: 'Loja, 20/08/2026 12:30', x: 3.5, y: 19.5, visible: true },
+    { id: 'cliente', label: 'CLIENTE:', category: 'encabezado', sample: 'Yeison Fernando Campoverde', x: 3.5, y: 23.5, visible: true },
+    { id: 'direccion', label: 'DIRECCIÓN:', category: 'encabezado', sample: 'Los Rosales, Calle Principal', x: 3.5, y: 27.0, visible: true },
+    { id: 'usuario', label: 'Usuario:', category: 'encabezado', sample: 'administrador', x: 45.0, y: 19.5, visible: true },
+    { id: 'forma_pago_encabezado', label: 'Forma pago:', category: 'encabezado', sample: 'Efectivo', x: 45.0, y: 22.0, visible: true },
+    { id: 'guia_remision', label: 'GUIA DE REMISIÓN:', category: 'encabezado', sample: '001-001-000458', x: 68.0, y: 19.5, visible: true },
+    { id: 'ruc_ci', label: 'R.U.C./C.I.:', category: 'encabezado', sample: '2150507511', x: 72.0, y: 23.5, visible: true },
+    { id: 'telfs', label: 'TELFS:', category: 'encabezado', sample: '0980252022', x: 72.0, y: 27.0, visible: true },
+
+    // TABLA / ITEMS
+    { id: 'col_cant', label: 'CANT.', category: 'tabla', sample: '2', x: 4.5, y: 33.0, visible: true },
+    { id: 'col_codigo', label: 'CODIGO', category: 'tabla', sample: '00442-SC', x: 10.5, y: 33.0, visible: true },
+    { id: 'col_descripcion', label: 'DESCRIPCION', category: 'tabla', sample: '*IC TTL 74LS11 COMPUERTA LOGICA', x: 25.0, y: 33.0, visible: true },
+    { id: 'col_valor_unitario', label: 'VALOR UNITARIO', category: 'tabla', sample: '1.2599', x: 78.0, y: 33.0, visible: true },
+    { id: 'col_valor_total', label: 'VALOR TOTAL', category: 'tabla', sample: '2.5198', x: 89.0, y: 33.0, visible: true },
+
+    // TOTALES Y CIERRE
+    { id: 'valor_total_dolares', label: 'VALOR TOTAL $', category: 'totales', sample: '10.32', x: 82.0, y: 80.0, visible: true },
+    { id: 'cambio', label: 'Cambio:', category: 'totales', sample: '$ 9.68', x: 86.0, y: 94.5, visible: true },
+    { id: 'entregue_conforme', label: 'ENTREGUE CONFORME', category: 'firmas', sample: '[ Firma Emisor ]', x: 34.0, y: 94.5, visible: true },
+    { id: 'recibi_conforme', label: 'RECIBI CONFORME', category: 'firmas', sample: '[ Firma Cliente ]', x: 60.0, y: 94.5, visible: true },
+    { id: 'nota_pie', label: 'SON / NOTAS:', category: 'totales', sample: 'Diez dólares con 32/100', x: 4.5, y: 84.0, visible: true }
+  ];
+
+  // ── ESTADO DEL EDITOR VISUAL ───────────────────────────────────────────────
+  let currentEditingModel = null;
+  let currentModelFields = [];
+  let selectedFieldId = null;
+  let isDraggingField = false;
+  let dragOffset = { x: 0, y: 0 };
+  let currentCatFilter = 'all';
+
+  const editorModal         = document.getElementById('model-editor-modal');
+  const editorTitle         = document.getElementById('model-editor-title');
+  const editorBackBtn       = document.getElementById('model-editor-back-btn');
+  const editorBgImage       = document.getElementById('editor-bg-image');
+  const editorGridLayer     = document.getElementById('editor-grid-layer');
+  const editorFieldsLayer   = document.getElementById('editor-fields-layer');
+  const editorFieldsList    = document.getElementById('editor-fields-list');
+  const editorOpacitySlider = document.getElementById('editor-opacity-slider');
+  const editorOpacityVal    = document.getElementById('editor-opacity-val');
+  const editorShowGridCheck = document.getElementById('editor-show-grid-check');
+  const editorSnapGridCheck = document.getElementById('editor-snap-grid-check');
+  const editorResetBtn      = document.getElementById('model-editor-reset-btn');
+  const editorSaveBtn       = document.getElementById('model-editor-save-btn');
+  const canvasContainer     = document.getElementById('editor-canvas-container');
+
+  // ── ABRIR EDITOR VISUAL ───────────────────────────────────────────────────
+  function openModelEditor(model) {
+    if (!editorModal) return;
+    currentEditingModel = model;
+    
+    // Título
+    if (editorTitle) {
+      editorTitle.innerHTML = `<i class="fa-solid fa-arrows-up-down-left-right" style="color: var(--primary);"></i> Editor de Posiciones: <span style="color: var(--primary);">${escapeHtml(model.nombre)}</span> (${model.tipo})`;
+    }
+
+    // Imagen de fondo
+    if (editorBgImage) {
+      editorBgImage.src = model.archivo_data || '';
+    }
+
+    // Cargar o inicializar posiciones de los 18 campos
+    let savedFields = [];
+    if (model.campos_posiciones) {
+      try {
+        savedFields = typeof model.campos_posiciones === 'string' 
+          ? JSON.parse(model.campos_posiciones) 
+          : model.campos_posiciones;
+      } catch (e) {
+        console.error('Error parseando campos guardados:', e);
+      }
+    }
+
+    // Combinar defaults con guardados para asegurar que los 18 campos siempre existan
+    currentModelFields = DEFAULT_DOCUMENT_FIELDS.map(def => {
+      const found = Array.isArray(savedFields) ? savedFields.find(s => s.id === def.id) : null;
+      return found ? { ...def, ...found } : { ...def };
+    });
+
+    selectedFieldId = null;
+    currentCatFilter = 'all';
+
+    // Restablecer controles de opacidad y grid
+    if (editorOpacitySlider) {
+      editorOpacitySlider.value = 45;
+      if (editorOpacityVal) editorOpacityVal.textContent = '45%';
+      if (editorBgImage) editorBgImage.style.opacity = '0.45';
+    }
+    if (editorShowGridCheck && editorGridLayer) {
+      editorShowGridCheck.checked = true;
+      editorGridLayer.classList.remove('hidden');
+    }
+
+    // Renderizar lista y canvas
+    renderSidebarFieldsList();
+    renderCanvasFields();
+
+    // Mostrar modal
+    editorModal.style.display = 'flex';
+  }
+
+  // ── RENDERIZAR LISTA LATERAL DE CAMPOS ────────────────────────────────────
+  function renderSidebarFieldsList() {
+    if (!editorFieldsList) return;
+    editorFieldsList.innerHTML = '';
+
+    const filtered = currentCatFilter === 'all'
+      ? currentModelFields
+      : currentModelFields.filter(f => f.category === currentCatFilter || (currentCatFilter === 'totales' && f.category === 'firmas'));
+
+    filtered.forEach(field => {
+      const item = document.createElement('div');
+      item.className = `editor-field-item${selectedFieldId === field.id ? ' active' : ''}`;
+      item.dataset.id = field.id;
+
+      let dotColor = '#3b82f6';
+      if (field.category === 'tabla') dotColor = '#8b5cf6';
+      if (field.category === 'totales') dotColor = '#10b981';
+      if (field.category === 'firmas') dotColor = '#f59e0b';
+
+      item.innerHTML = `
+        <div class="editor-field-item-left">
+          <div class="editor-field-dot" style="background: ${dotColor};"></div>
+          <div>
+            <div class="editor-field-item-name">${escapeHtml(field.label)}</div>
+            <div class="editor-field-item-coords">X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <input type="checkbox" class="field-vis-check" ${field.visible !== false ? 'checked' : ''} title="Activar/Desactivar campo" style="accent-color: var(--primary); cursor: pointer;">
+        </div>
+      `;
+
+      // Clic para enfocar y seleccionar
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('field-vis-check')) return;
+        selectField(field.id);
+      });
+
+      // Toggle visibilidad
+      item.querySelector('.field-vis-check').addEventListener('change', (e) => {
+        field.visible = e.target.checked;
+        renderCanvasFields();
+      });
+
+      editorFieldsList.appendChild(item);
+    });
+  }
+
+  // ── SELECCIONAR Y ENFOCAR CAMPO ───────────────────────────────────────────
+  function selectField(fieldId) {
+    selectedFieldId = fieldId;
+    renderSidebarFieldsList();
+
+    // Resaltar en el canvas
+    document.querySelectorAll('.editor-draggable-tag').forEach(tag => {
+      tag.classList.toggle('focused', tag.dataset.id === fieldId);
+    });
+
+    const focusedTag = document.querySelector(`.editor-draggable-tag[data-id="${fieldId}"]`);
+    if (focusedTag) {
+      focusedTag.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // ── RENDERIZAR CAMPOS SOBRE EL CANVAS ─────────────────────────────────────
+  function renderCanvasFields() {
+    if (!editorFieldsLayer) return;
+    editorFieldsLayer.innerHTML = '';
+
+    currentModelFields.forEach(field => {
+      if (field.visible === false) return;
+
+      const tag = document.createElement('div');
+      tag.className = `editor-draggable-tag cat-${field.category}${selectedFieldId === field.id ? ' focused' : ''}`;
+      tag.dataset.id = field.id;
+      tag.style.left = `${field.x}%`;
+      tag.style.top = `${field.y}%`;
+
+      tag.innerHTML = `
+        <i class="fa-solid fa-grip-vertical tag-handle"></i>
+        <span class="tag-text">${escapeHtml(field.label)}</span>
+        <span class="tag-sample-value">${escapeHtml(field.sample)}</span>
+      `;
+
+      // Drag & Drop con Mouse / Touch
+      tag.addEventListener('mousedown', (e) => startDrag(e, field, tag));
+      tag.addEventListener('touchstart', (e) => startDrag(e, field, tag), { passive: false });
+
+      editorFieldsLayer.appendChild(tag);
+    });
+  }
+
+  // ── LÓGICA DE ARRASTRE DE CAMPOS ──────────────────────────────────────────
+  function startDrag(e, field, tagEl) {
+    e.preventDefault();
+    selectField(field.id);
+    isDraggingField = true;
+    tagEl.classList.add('dragging');
+
+    const rect = canvasContainer.getBoundingClientRect();
+    const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+
+    const currentTagLeft = (field.x / 100) * rect.width;
+    const currentTagTop = (field.y / 100) * rect.height;
+
+    dragOffset.x = (clientX - rect.left) - currentTagLeft;
+    dragOffset.y = (clientY - rect.top) - currentTagTop;
+
+    function onMove(moveEvent) {
+      if (!isDraggingField) return;
+      moveEvent.preventDefault();
+
+      const mClientX = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const mClientY = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      let newXPixels = (mClientX - rect.left) - dragOffset.x;
+      let newYPixels = (mClientY - rect.top) - dragOffset.y;
+
+      let newXPercent = (newXPixels / rect.width) * 100;
+      let newYPercent = (newYPixels / rect.height) * 100;
+
+      // Ajuste a guías / Snap
+      if (editorSnapGridCheck && editorSnapGridCheck.checked) {
+        const snapGridSize = 1.0; // 1% snap
+        newXPercent = Math.round(newXPercent / snapGridSize) * snapGridSize;
+        newYPercent = Math.round(newYPercent / snapGridSize) * snapGridSize;
+      }
+
+      // Limitar dentro del canvas (0% a 95%)
+      newXPercent = Math.max(0.5, Math.min(92.0, newXPercent));
+      newYPercent = Math.max(0.5, Math.min(97.0, newYPercent));
+
+      field.x = newXPercent;
+      field.y = newYPercent;
+
+      tagEl.style.left = `${newXPercent}%`;
+      tagEl.style.top = `${newYPercent}%`;
+
+      // Actualizar coordenadas en la barra lateral
+      const sidebarItem = document.querySelector(`.editor-field-item[data-id="${field.id}"] .editor-field-item-coords`);
+      if (sidebarItem) {
+        sidebarItem.textContent = `X: ${newXPercent.toFixed(1)}% | Y: ${newYPercent.toFixed(1)}%`;
+      }
+    }
+
+    function onEnd() {
+      isDraggingField = false;
+      tagEl.classList.remove('dragging');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+  }
+
+  // ── CONTROLES DEL EDITOR ──────────────────────────────────────────────────
+  if (editorOpacitySlider) {
+    editorOpacitySlider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (editorOpacityVal) editorOpacityVal.textContent = `${val}%`;
+      if (editorBgImage) editorBgImage.style.opacity = (val / 100).toString();
+    });
+  }
+
+  if (editorShowGridCheck) {
+    editorShowGridCheck.addEventListener('change', (e) => {
+      if (editorGridLayer) {
+        editorGridLayer.classList.toggle('hidden', !e.target.checked);
+      }
+    });
+  }
+
+  // Restablecer posiciones por defecto
+  if (editorResetBtn) {
+    editorResetBtn.addEventListener('click', () => {
+      if (confirm('¿Deseas restablecer las posiciones sugeridas para este modelo?')) {
+        currentModelFields = DEFAULT_DOCUMENT_FIELDS.map(def => ({ ...def }));
+        renderSidebarFieldsList();
+        renderCanvasFields();
+        showToast('Posiciones restablecidas.', 'info');
+      }
+    });
+  }
+
+  // Guardar posiciones en la base de datos
+  if (editorSaveBtn) {
+    editorSaveBtn.addEventListener('click', async () => {
+      if (!currentEditingModel) return;
+
+      const payload = {
+        id: currentEditingModel.id,
+        nombre: currentEditingModel.nombre,
+        tipo: currentEditingModel.tipo,
+        descripcion: currentEditingModel.descripcion,
+        es_predeterminado: currentEditingModel.es_predeterminado,
+        campos_posiciones: JSON.stringify(currentModelFields)
+      };
+
+      const res = await window.api.saveModeloDocumento(payload);
+      if (res && res.success) {
+        showToast('¡Posiciones y cuadrícula del modelo guardadas exitosamente!', 'success');
+        if (editorModal) editorModal.style.display = 'none';
+        await loadAndRenderModels();
+      } else {
+        showToast('Error al guardar posiciones: ' + (res ? res.message : ''), 'error');
+      }
+    });
+  }
+
+  // Botón Volver
+  if (editorBackBtn) {
+    editorBackBtn.addEventListener('click', () => {
+      if (editorModal) editorModal.style.display = 'none';
+      if (modelsModal) modelsModal.style.display = 'flex';
+    });
+  }
+
+  // Pestañas de categorías de campos en el editor
+  document.querySelectorAll('.editor-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.editor-cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCatFilter = btn.dataset.cat || 'all';
+      renderSidebarFieldsList();
+    });
+  });
 
   // ── Lightbox / Visualizador en alta resolución ───────────────────────────────
   function openLightbox(model) {
@@ -4560,19 +4898,29 @@ document.addEventListener('DOMContentLoaded', () => {
         archivo_nombre: selectedFileName || 'modelo.png',
         archivo_tipo: selectedFileType || 'image/png',
         archivo_data: selectedFileBase64,
+        campos_posiciones: JSON.stringify(DEFAULT_DOCUMENT_FIELDS),
         es_predeterminado: esPredeterminado
       };
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo subido con éxito! Abriendo calibrador de cuadrícula...', 'success');
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo guardado! Abriendo editor de posiciones...', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
 
-        // Si es un modelo nuevo recién creado, abrir el calibrador directamente
-        const savedId = res.id || editId;
-        const savedModel = allModels.find(m => m.id === savedId) || { ...payload, id: savedId };
-        openCalibratorModal(savedModel);
+        // Si es nuevo modelo, abrir inmediatamente el editor de cuadrícula
+        if (!editId && res.id) {
+          const newModel = allModels.find(m => m.id === res.id) || {
+            id: res.id,
+            nombre,
+            tipo,
+            descripcion,
+            archivo_data: selectedFileBase64,
+            campos_posiciones: JSON.stringify(DEFAULT_DOCUMENT_FIELDS),
+            es_predeterminado: esPredeterminado
+          };
+          openModelEditor(newModel);
+        }
       } else {
         showToast('Error al guardar el modelo: ' + (res ? res.message : ''), 'error');
       }
@@ -4593,384 +4941,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modelsSearchInput) {
     modelsSearchInput.addEventListener('input', () => {
       renderModelsGrid();
-    });
-  }
-
-  // ==========================================================================
-  // CALIBRADOR / DISEÑADOR DE CAMPOS CON CUADRÍCULA Y TRANSPARENCIA
-  // ==========================================================================
-
-  const DEFAULT_FIELDS_DEF = [
-    { id: 'fecha_emision',      label: 'FECHA DE EMISION:',   cat: 'header',    sample: 'Loja, 1/8/2026 12:6:51', x: 22.0, y: 20.5 },
-    { id: 'cliente',            label: 'CLIENTE:',            cat: 'header',    sample: 'Yeison Fernando Campoverde', x: 20.0, y: 24.0 },
-    { id: 'direccion',          label: 'DIRECCION:',          cat: 'header',    sample: 'Los Rosales', x: 18.0, y: 27.5 },
-    { id: 'usuario',            label: 'Ususario:',           cat: 'header',    sample: 'administrador', x: 53.0, y: 20.5 },
-    { id: 'forma_pago',         label: 'Forma pago:',         cat: 'header',    sample: 'Efectivo', x: 53.0, y: 22.5 },
-    { id: 'guia_remision',      label: 'GUIA DE REMISION:',   cat: 'header',    sample: '001-001', x: 74.0, y: 20.5 },
-    { id: 'ruc_ci',             label: 'R.U.C./C.I.:',        cat: 'header',    sample: '2150507511', x: 74.0, y: 23.8 },
-    { id: 'telfs',              label: 'TELFS:',              cat: 'header',    sample: '0980252022', x: 74.0, y: 27.0 },
-    { id: 'cambio',             label: 'Cambio:',             cat: 'total',     sample: '$ 9.68', x: 91.0, y: 95.0 },
-    { id: 'col_cant',           label: 'CANT.',               cat: 'table',     sample: '1', x: 4.8, y: 31.5 },
-    { id: 'col_codigo',         label: 'CODIGO',              cat: 'table',     sample: '00442-SC', x: 11.5, y: 31.5 },
-    { id: 'col_descripcion',    label: 'DESCRIPCION',         cat: 'table',     sample: '*IC TTL 74LS11/NTE74LS11', x: 45.0, y: 31.5 },
-    { id: 'col_unitario',       label: 'VALOR UNITARIO',      cat: 'table',     sample: '1.2599', x: 83.5, y: 31.5 },
-    { id: 'col_total',          label: 'VALOR TOTAL',         cat: 'table',     sample: '1.2599', x: 94.5, y: 31.5 },
-    { id: 'valor_total_usd',    label: 'VALOR TOTAL $',       cat: 'total',     sample: '10.32', x: 86.0, y: 80.5 },
-    { id: 'entregue_conforme',  label: 'ENTREGUE CONFORME',   cat: 'signature', sample: 'Firma Emisor', x: 40.0, y: 95.0 },
-    { id: 'recibi_conforme',    label: 'RECIBI CONFORME',     cat: 'signature', sample: 'Firma Cliente', x: 65.0, y: 95.0 }
-  ];
-
-  let activeCalibratorModel = null;
-  let activeFieldsData = [];
-  let selectedMarkerId = null;
-  let isDragging = false;
-  let dragFieldId = null;
-  let currentZoom = 1;
-  let isSnapEnabled = true;
-
-  const calibratorModal     = document.getElementById('model-calibrator-modal');
-  const calibratorTitle     = document.getElementById('calibrator-modal-title');
-  const calibratorCanvas    = document.getElementById('calibrator-canvas');
-  const calibratorBgImg     = document.getElementById('calibrator-bg-img');
-  const calibratorGridLayer = document.getElementById('calibrator-grid-overlay');
-  const calibratorMarkers   = document.getElementById('calibrator-markers-layer');
-  const calibratorFieldsList= document.getElementById('calibrator-fields-list');
-  const opacitySlider       = document.getElementById('calibrator-opacity-slider');
-  const opacityValText      = document.getElementById('calibrator-opacity-val');
-  const toggleGridBtn       = document.getElementById('calibrator-toggle-grid-btn');
-  const gridSizeSelect      = document.getElementById('calibrator-grid-size-select');
-  const snapBtn             = document.getElementById('calibrator-snap-btn');
-  const zoomInBtn           = document.getElementById('calibrator-zoom-in');
-  const zoomOutBtn          = document.getElementById('calibrator-zoom-out');
-  const zoomFitBtn          = document.getElementById('calibrator-zoom-fit');
-  const zoomValText         = document.getElementById('calibrator-zoom-val');
-  const resetBtn            = document.getElementById('calibrator-reset-btn');
-  const saveCalibratorBtn   = document.getElementById('calibrator-save-btn');
-
-  window.openCalibratorModal = function (model) {
-    if (!calibratorModal || !model) return;
-    activeCalibratorModel = model;
-
-    if (calibratorTitle) {
-      calibratorTitle.innerHTML = `<i class="fa-solid fa-object-ungroup" style="color: var(--primary);"></i> Calibrando: <strong>${escapeHtml(model.nombre || 'Modelo')}</strong> (${model.tipo || 'Documento'})`;
-    }
-
-    if (calibratorBgImg) {
-      calibratorBgImg.src = model.archivo_data || '';
-    }
-
-    // Cargar o inicializar campos
-    let savedFields = [];
-    if (model.campos_config) {
-      try {
-        savedFields = typeof model.campos_config === 'string' ? JSON.parse(model.campos_config) : model.campos_config;
-      } catch (e) {
-        savedFields = [];
-      }
-    }
-
-    // Merge con la lista base de 17 campos
-    activeFieldsData = DEFAULT_FIELDS_DEF.map(def => {
-      const found = Array.isArray(savedFields) ? savedFields.find(s => s.id === def.id) : null;
-      return {
-        ...def,
-        x: found && typeof found.x === 'number' ? found.x : def.x,
-        y: found && typeof found.y === 'number' ? found.y : def.y
-      };
-    });
-
-    selectedMarkerId = null;
-    currentZoom = 1;
-    applyZoom();
-
-    calibratorModal.style.display = 'flex';
-
-    // Renderizar una vez cargue la imagen
-    if (calibratorBgImg.complete) {
-      renderCalibratorWorkspace();
-    } else {
-      calibratorBgImg.onload = () => renderCalibratorWorkspace();
-    }
-  };
-
-  window.closeCalibratorModal = function () {
-    if (calibratorModal) calibratorModal.style.display = 'none';
-  };
-
-  function renderCalibratorWorkspace() {
-    renderMarkers();
-    renderSidebarList();
-  }
-
-  function renderMarkers() {
-    if (!calibratorMarkers) return;
-    calibratorMarkers.innerHTML = '';
-
-    activeFieldsData.forEach(field => {
-      const marker = document.createElement('div');
-      marker.className = `calibrator-marker${selectedMarkerId === field.id ? ' selected' : ''}`;
-      marker.dataset.id = field.id;
-      marker.dataset.cat = field.cat || 'header';
-      marker.style.left = `${field.x}%`;
-      marker.style.top = `${field.y}%`;
-
-      marker.innerHTML = `
-        <div class="calibrator-marker-pin"></div>
-        <span class="calibrator-marker-label">${escapeHtml(field.label)}</span>
-        <span class="calibrator-marker-val">${escapeHtml(field.sample)}</span>
-      `;
-
-      // Eventos de selección y arrastre
-      marker.addEventListener('mousedown', (e) => startDragging(e, field.id));
-
-      calibratorMarkers.appendChild(marker);
-    });
-  }
-
-  function renderSidebarList() {
-    if (!calibratorFieldsList) return;
-    calibratorFieldsList.innerHTML = '';
-
-    activeFieldsData.forEach(field => {
-      const row = document.createElement('div');
-      row.className = `calibrator-field-row${selectedMarkerId === field.id ? ' active' : ''}`;
-      row.dataset.id = field.id;
-
-      row.innerHTML = `
-        <div class="calibrator-field-info">
-          <span class="calibrator-field-title">${escapeHtml(field.label)}</span>
-          <span class="calibrator-field-coords">X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%</span>
-        </div>
-        <div style="font-size: 0.8rem; color: var(--primary);"><i class="fa-solid fa-arrows-up-down-left-right"></i></div>
-      `;
-
-      row.addEventListener('click', () => {
-        selectMarker(field.id);
-      });
-
-      calibratorFieldsList.appendChild(row);
-    });
-  }
-
-  function selectMarker(id) {
-    selectedMarkerId = id;
-    document.querySelectorAll('.calibrator-marker').forEach(m => {
-      m.classList.toggle('selected', m.dataset.id === id);
-    });
-    document.querySelectorAll('.calibrator-field-row').forEach(r => {
-      r.classList.toggle('active', r.dataset.id === id);
-    });
-  }
-
-  // ── Drag & Drop de Marcadores sobre el Canvas ───────────────────────────────
-  function startDragging(e, fieldId) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    isDragging = true;
-    dragFieldId = fieldId;
-    selectMarker(fieldId);
-
-    const markerEl = document.querySelector(`.calibrator-marker[data-id="${fieldId}"]`);
-    if (markerEl) markerEl.classList.add('dragging');
-
-    window.addEventListener('mousemove', onDragging);
-    window.addEventListener('mouseup', stopDragging);
-  }
-
-  function onDragging(e) {
-    if (!isDragging || !dragFieldId || !calibratorCanvas) return;
-
-    const rect = calibratorCanvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-
-    // Coordenadas relativas al canvas en porcentaje
-    let xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-    let yPercent = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Snap to grid (redondeo a múltiplos de 1% o 0.5%)
-    if (isSnapEnabled) {
-      xPercent = Math.round(xPercent * 2) / 2;
-      yPercent = Math.round(yPercent * 2) / 2;
-    }
-
-    // Límites 0% a 100%
-    xPercent = Math.max(0.5, Math.min(99.5, xPercent));
-    yPercent = Math.max(0.5, Math.min(99.5, yPercent));
-
-    // Actualizar datos
-    const field = activeFieldsData.find(f => f.id === dragFieldId);
-    if (field) {
-      field.x = xPercent;
-      field.y = yPercent;
-
-      const markerEl = document.querySelector(`.calibrator-marker[data-id="${dragFieldId}"]`);
-      if (markerEl) {
-        markerEl.style.left = `${xPercent}%`;
-        markerEl.style.top = `${yPercent}%`;
-      }
-
-      // Actualizar coords en sidebar
-      const row = document.querySelector(`.calibrator-field-row[data-id="${dragFieldId}"] .calibrator-field-coords`);
-      if (row) {
-        row.textContent = `X: ${xPercent.toFixed(1)}% | Y: ${yPercent.toFixed(1)}%`;
-      }
-    }
-  }
-
-  function stopDragging() {
-    if (!isDragging) return;
-    isDragging = false;
-
-    if (dragFieldId) {
-      const markerEl = document.querySelector(`.calibrator-marker[data-id="${dragFieldId}"]`);
-      if (markerEl) markerEl.classList.remove('dragging');
-      dragFieldId = null;
-    }
-
-    window.removeEventListener('mousemove', onDragging);
-    window.removeEventListener('mouseup', stopDragging);
-  }
-
-  // ── Mover marcador seleccionado con flechas del teclado ─────────────────────
-  window.addEventListener('keydown', (e) => {
-    if (!calibratorModal || calibratorModal.style.display === 'none' || !selectedMarkerId) return;
-
-    let step = e.shiftKey ? 1.0 : 0.2;
-    let handled = false;
-
-    const field = activeFieldsData.find(f => f.id === selectedMarkerId);
-    if (!field) return;
-
-    if (e.key === 'ArrowLeft') {
-      field.x = Math.max(0.5, field.x - step);
-      handled = true;
-    } else if (e.key === 'ArrowRight') {
-      field.x = Math.min(99.5, field.x + step);
-      handled = true;
-    } else if (e.key === 'ArrowUp') {
-      field.y = Math.max(0.5, field.y - step);
-      handled = true;
-    } else if (e.key === 'ArrowDown') {
-      field.y = Math.min(99.5, field.y + step);
-      handled = true;
-    }
-
-    if (handled) {
-      e.preventDefault();
-      const markerEl = document.querySelector(`.calibrator-marker[data-id="${selectedMarkerId}"]`);
-      if (markerEl) {
-        markerEl.style.left = `${field.x}%`;
-        markerEl.style.top = `${field.y}%`;
-      }
-      const row = document.querySelector(`.calibrator-field-row[data-id="${selectedMarkerId}"] .calibrator-field-coords`);
-      if (row) {
-        row.textContent = `X: ${field.x.toFixed(1)}% | Y: ${field.y.toFixed(1)}%`;
-      }
-    }
-  });
-
-  // ── Control de Opacidad de Imagen de Fondo ─────────────────────────────────
-  if (opacitySlider) {
-    opacitySlider.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (opacityValText) opacityValText.textContent = `${val}%`;
-      if (calibratorBgImg) calibratorBgImg.style.opacity = (val / 100).toString();
-    });
-  }
-
-  // ── Control de Cuadrícula ──────────────────────────────────────────────────
-  if (toggleGridBtn) {
-    toggleGridBtn.addEventListener('click', () => {
-      if (calibratorGridLayer.style.display === 'none') {
-        calibratorGridLayer.style.display = 'block';
-        toggleGridBtn.classList.add('active');
-      } else {
-        calibratorGridLayer.style.display = 'none';
-        toggleGridBtn.classList.remove('active');
-      }
-    });
-  }
-
-  if (gridSizeSelect) {
-    gridSizeSelect.addEventListener('change', (e) => {
-      calibratorGridLayer.className = `calibrator-grid-overlay ${e.target.value}`;
-    });
-  }
-
-  if (snapBtn) {
-    snapBtn.addEventListener('click', () => {
-      isSnapEnabled = !isSnapEnabled;
-      snapBtn.classList.toggle('active', isSnapEnabled);
-      showToast(isSnapEnabled ? 'Ajuste a cuadrícula activado' : 'Ajuste a cuadrícula desactivado', 'info');
-    });
-  }
-
-  // ── Controles de Zoom ──────────────────────────────────────────────────────
-  function applyZoom() {
-    if (calibratorCanvas) {
-      calibratorCanvas.style.transform = `scale(${currentZoom})`;
-    }
-    if (zoomValText) {
-      zoomValText.textContent = `${Math.round(currentZoom * 100)}%`;
-    }
-  }
-
-  if (zoomInBtn) {
-    zoomInBtn.addEventListener('click', () => {
-      currentZoom = Math.min(2.5, currentZoom + 0.15);
-      applyZoom();
-    });
-  }
-
-  if (zoomOutBtn) {
-    zoomOutBtn.addEventListener('click', () => {
-      currentZoom = Math.max(0.4, currentZoom - 0.15);
-      applyZoom();
-    });
-  }
-
-  if (zoomFitBtn) {
-    zoomFitBtn.addEventListener('click', () => {
-      currentZoom = 1;
-      applyZoom();
-    });
-  }
-
-  // ── Restablecer Posiciones por Defecto ──────────────────────────────────────
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      if (confirm('¿Restablecer las posiciones de todos los campos a los valores predeterminados?')) {
-        activeFieldsData = DEFAULT_FIELDS_DEF.map(d => ({ ...d }));
-        renderCalibratorWorkspace();
-        showToast('Posiciones restablecidas.', 'info');
-      }
-    });
-  }
-
-  // ── Guardar Calibración en la Base de Datos ─────────────────────────────────
-  if (saveCalibratorBtn) {
-    saveCalibratorBtn.addEventListener('click', async () => {
-      if (!activeCalibratorModel || !activeCalibratorModel.id) {
-        showToast('No hay un modelo activo para guardar.', 'warning');
-        return;
-      }
-
-      const payload = {
-        id: activeCalibratorModel.id,
-        nombre: activeCalibratorModel.nombre,
-        tipo: activeCalibratorModel.tipo,
-        campos_config: activeFieldsData
-      };
-
-      const res = await window.api.saveModeloDocumento(payload);
-      if (res && res.success) {
-        showToast('¡Calibración y posiciones de campos guardadas con éxito!', 'success');
-        activeCalibratorModel.campos_config = activeFieldsData;
-        await loadAndRenderModels();
-      } else {
-        showToast('Error al guardar calibración: ' + (res ? res.message : ''), 'error');
-      }
     });
   }
 

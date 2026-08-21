@@ -1990,118 +1990,87 @@
     </div>
   </div>
 
-  <!-- Modal: Lightbox / Visualizador en alta resolución de Modelo -->
-  <div id="model-lightbox-modal" class="modal-overlay" style="display: none; z-index: 2500;">
-    <div class="lightbox-modal-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span id="lightbox-badge-type" class="model-badge-type" style="position: static;">Factura</span>
-          <h3 id="lightbox-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--text-main);">Vista de Modelo</h3>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <a id="lightbox-download-btn" href="#" download="modelo.png" class="btn-secondary" style="width: auto; padding: 6px 14px; font-size: 0.82rem; margin: 0; text-decoration: none; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-download"></i> Descargar
-          </a>
-          <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="document.getElementById('model-lightbox-modal').style.display='none'">&times;</button>
-        </div>
-      </div>
-      <div class="lightbox-img-wrapper">
-        <img id="lightbox-img" src="" alt="Modelo completo">
-      </div>
-      <div style="padding-top: 10px; border-top: 1px solid var(--card-border); font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-        <span id="lightbox-desc"></span>
-        <span id="lightbox-date"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Diseñador / Calibrador Visual de Campos con Cuadrícula y Transparencia -->
-  <div id="model-calibrator-modal" class="modal-overlay" style="display: none; z-index: 3000;">
-    <div class="calibrator-modal-card">
-      <!-- Header -->
-      <div class="calibrator-header">
+  <!-- Modal: Editor Visual de Cuadrícula y Posición de Campos en el Modelo -->
+  <div id="model-editor-modal" class="modal-overlay" style="display: none; z-index: 2000;">
+    <div class="model-editor-card">
+      <div class="model-editor-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <i class="fa-solid fa-object-ungroup" style="font-size: 1.25rem; color: var(--primary);"></i>
+          <button type="button" id="model-editor-back-btn" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.82rem; margin: 0; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-arrow-left"></i> Volver a Modelos
+          </button>
           <div>
-            <h3 id="calibrator-modal-title" style="font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0;">Calibrador de Plantilla y Cuadrícula</h3>
-            <span style="font-size: 0.78rem; color: var(--text-muted);">Arrastra los campos a las posiciones exactas de tu formato preimpreso</span>
+            <h3 id="model-editor-title" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">
+              Editor de Posiciones en Modelo
+            </h3>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Arrastra los campos sobre la cuadrícula y plantilla semitransparente</span>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <button type="button" id="calibrator-save-btn" class="btn-primary" style="width: auto; padding: 8px 18px; font-size: 0.85rem; margin: 0; background: #10b981; border: none; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-floppy-disk"></i> <span>Guardar Calibración</span>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <!-- Controles de Cuadrícula y Transparencia -->
+          <div class="editor-quick-controls">
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <i class="fa-solid fa-eye" style="color: var(--primary);"></i> Opacidad Plantilla:
+              <input type="range" id="editor-opacity-slider" min="10" max="100" value="45" style="width: 80px; accent-color: var(--primary);">
+              <span id="editor-opacity-val" style="font-size: 0.75rem; width: 30px;">45%</span>
+            </label>
+            <div style="width: 1px; height: 18px; background: var(--card-border);"></div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="editor-show-grid-check" checked style="accent-color: var(--primary);">
+              <span>Cuadrícula</span>
+            </label>
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="editor-snap-grid-check" checked style="accent-color: var(--primary);">
+              <span>Ajustar a Guías (Snap)</span>
+            </label>
+          </div>
+
+          <button type="button" id="model-editor-reset-btn" class="btn-secondary" style="width: auto; padding: 7px 14px; font-size: 0.82rem; margin: 0;" title="Restablecer posiciones sugeridas">
+            <i class="fa-solid fa-rotate-left"></i> Restablecer
           </button>
-          <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="closeCalibratorModal()">&times;</button>
+          <button type="button" id="model-editor-save-btn" class="btn-primary" style="width: auto; padding: 7px 18px; font-size: 0.85rem; margin: 0; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Posiciones
+          </button>
+          <button class="modal-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="document.getElementById('model-editor-modal').style.display='none'">&times;</button>
         </div>
       </div>
 
-      <!-- Barra de herramientas de precisión -->
-      <div class="calibrator-toolbar">
-        <div class="calibrator-tool-group">
-          <label><i class="fa-solid fa-sliders"></i> Opacidad Imagen:</label>
-          <input type="range" id="calibrator-opacity-slider" min="10" max="100" value="50" style="width: 110px; accent-color: var(--primary); cursor: pointer;">
-          <span id="calibrator-opacity-val" style="font-size: 0.75rem; color: var(--text-main); font-weight: 600; width: 34px;">50%</span>
-        </div>
-
-        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
-
-        <div class="calibrator-tool-group">
-          <button type="button" id="calibrator-toggle-grid-btn" class="btn-secondary active" style="width: auto; padding: 5px 12px; font-size: 0.8rem; margin: 0; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-border-all"></i> <span>Cuadrícula</span>
-          </button>
-          <select id="calibrator-grid-size-select" class="form-input" style="width: 90px; height: 30px; padding: 2px 8px; font-size: 0.78rem; margin: 0; background: var(--bg-primary);">
-            <option value="dense">10px (Fina)</option>
-            <option value="normal" selected>20px (Media)</option>
-            <option value="loose">40px (Amplia)</option>
-          </select>
-        </div>
-
-        <div class="calibrator-tool-group">
-          <button type="button" id="calibrator-snap-btn" class="btn-secondary active" style="width: auto; padding: 5px 12px; font-size: 0.8rem; margin: 0; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-magnet"></i> <span>Snap (Ajustar)</span>
-          </button>
-        </div>
-
-        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
-
-        <div class="calibrator-tool-group">
-          <button type="button" id="calibrator-zoom-out" class="btn-secondary" style="width: 28px; height: 28px; padding: 0; margin: 0; font-size: 0.85rem;"><i class="fa-solid fa-minus"></i></button>
-          <span id="calibrator-zoom-val" style="font-size: 0.8rem; font-weight: 600; width: 42px; text-align: center; color: var(--text-main);">100%</span>
-          <button type="button" id="calibrator-zoom-in" class="btn-secondary" style="width: 28px; height: 28px; padding: 0; margin: 0; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i></button>
-          <button type="button" id="calibrator-zoom-fit" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.75rem; margin: 0;">Ajustar</button>
-        </div>
-
-        <div style="margin-left: auto; display: flex; gap: 8px;">
-          <button type="button" id="calibrator-reset-btn" class="btn-secondary" style="width: auto; padding: 5px 12px; font-size: 0.8rem; margin: 0; color: #f87171; border-color: rgba(248,113,113,0.3);">
-            <i class="fa-solid fa-rotate-left"></i> Restablecer Posiciones
-          </button>
-        </div>
-      </div>
-
-      <!-- Cuerpo principal: Workspace + Sidebar -->
-      <div class="calibrator-body">
-        <!-- Espacio de trabajo (Canvas) -->
-        <div id="calibrator-workspace" class="calibrator-workspace">
-          <div id="calibrator-canvas" class="calibrator-canvas">
-            <!-- Imagen de fondo con opacidad ajustable -->
-            <img id="calibrator-bg-img" class="calibrator-img" src="" alt="Factura Plantilla">
-            <!-- Capa de Cuadrícula -->
-            <div id="calibrator-grid-overlay" class="calibrator-grid-overlay"></div>
-            <!-- Contenedor de Marcadores Arrastrables -->
-            <div id="calibrator-markers-layer" style="position: absolute; inset: 0;">
-              <!-- Se generan dinámicamente los 17 marcadores -->
+      <div class="model-editor-layout">
+        <!-- Barra lateral izquierda: Lista de campos interactivos -->
+        <div class="model-editor-sidebar">
+          <div style="padding: 12px 14px; border-bottom: 1px solid var(--card-border); background: rgba(0,0,0,0.15);">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Campos del Documento
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+              Haz clic en un campo para enfocarlo o actívalo/desactívalo
             </div>
           </div>
+
+          <!-- Pestañas de categorías de campos -->
+          <div class="editor-fields-categories">
+            <button class="editor-cat-btn active" data-cat="all">Todos (18)</button>
+            <button class="editor-cat-btn" data-cat="encabezado">Encabezado</button>
+            <button class="editor-cat-btn" data-cat="tabla">Tabla / Items</button>
+            <button class="editor-cat-btn" data-cat="totales">Totales / Firmas</button>
+          </div>
+
+          <div id="editor-fields-list" class="editor-fields-list">
+            <!-- Campos inyectados dinámicamente -->
+          </div>
         </div>
 
-        <!-- Barra lateral de campos -->
-        <div class="calibrator-sidebar">
-          <div class="calibrator-sidebar-header">
-            <span><i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Campos del Documento</span>
-            <span id="calibrator-fields-count" style="font-size: 0.75rem; background: rgba(59,130,246,0.2); color: #93c5fd; padding: 2px 6px; border-radius: 4px;">17 campos</span>
-          </div>
-          <div id="calibrator-fields-list" class="calibrator-fields-list">
-            <!-- Filas dinámicas de campos -->
+        <!-- Área Central de Trabajo: Canvas / Cuadrícula con imagen semitransparente -->
+        <div class="model-editor-workspace">
+          <div id="editor-canvas-container" class="editor-canvas-container">
+            <!-- Imagen de la factura de fondo (semitransparente) -->
+            <img id="editor-bg-image" class="editor-bg-image" src="" alt="Plantilla Factura">
+            
+            <!-- Capa de Cuadrícula / Guías -->
+            <div id="editor-grid-layer" class="editor-grid-layer"></div>
+
+            <!-- Capa de Campos Arrastrables y Editables -->
+            <div id="editor-fields-layer" class="editor-fields-layer"></div>
           </div>
         </div>
       </div>
