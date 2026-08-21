@@ -619,9 +619,14 @@
           <div class="content-card">
             <div class="card-header-main">
               <span class="card-title-main"><i class="fa-solid fa-calculator"></i> Facturación y Caja</span>
-              <button id="add-invoice-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
-                <i class="fa-solid fa-cart-shopping"></i> Nueva Factura / Venta
-              </button>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="invoice-models-btn" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                  <i class="fa-solid fa-layer-group"></i> Modelos
+                </button>
+                <button id="add-invoice-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
+                  <i class="fa-solid fa-cart-shopping"></i> Nueva Factura / Venta
+                </button>
+              </div>
             </div>
             <div style="overflow-x: auto; margin-top: 15px;">
               <table class="data-table" id="invoices-table">

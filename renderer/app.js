@@ -2133,7 +2133,19 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const addInvoiceBtn = document.getElementById('add-invoice-btn');
+  const invoiceModelsBtn = document.getElementById('invoice-models-btn');
   const invoiceRepairSelect = document.getElementById('invoice-repair');
+  
+  if (invoiceModelsBtn) {
+    invoiceModelsBtn.addEventListener('click', () => {
+      // Evento para el botón de modelos de facturación
+      if (typeof window.openInvoiceModelsModal === 'function') {
+        window.openInvoiceModelsModal();
+      } else {
+        showToast('Módulo de Modelos de Factura listo para configurar.', 'info');
+      }
+    });
+  }
   
   if (addInvoiceBtn) {
     addInvoiceBtn.addEventListener('click', async () => {
