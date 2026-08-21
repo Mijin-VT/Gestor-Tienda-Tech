@@ -1968,10 +1968,23 @@
                       <input type="number" id="grid-img-offset-y" value="0" style="width: 50px; height: 26px; padding: 2px 4px; font-size: 0.8rem; background: var(--bg-primary); color: #fff; border: 1px solid var(--card-border); border-radius: 4px;" title="Desplazamiento vertical (Y)">
                     </div>
 
+                    <button type="button" id="btn-auto-map-fields" class="btn-primary" style="width: auto; padding: 4px 12px; font-size: 0.78rem; margin: 0; background: #059669;" title="Ubica automáticamente todos los campos detectados">
+                      <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Calibrar Campos
+                    </button>
+
                     <button type="button" id="btn-reset-grid-calib" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.78rem; margin: 0;">
                       <i class="fa-solid fa-rotate-left"></i> Restablecer
                     </button>
                   </div>
+                </div>
+
+                <!-- Barra de Etiquetas / Asignador de Campos a Celdas -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-tags" style="color: var(--primary);"></i> Asignar a celda seleccionada:</span>
+                  <div id="field-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <!-- Botones de tags generados dinámicamente -->
+                  </div>
+                  <span id="selected-cell-indicator" style="margin-left: auto; font-size: 0.75rem; color: var(--warning); font-weight: 600;">Celda activa: Ninguna</span>
                 </div>
 
                 <!-- Contenedor con la imagen transparente y la hoja excel interactiva -->

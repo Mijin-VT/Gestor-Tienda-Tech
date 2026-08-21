@@ -4327,6 +4327,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
+              <button class="model-action-btn edit" title="Editar y calibrar cuadrícula" data-action="edit">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
               </button>
@@ -4344,6 +4347,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Clic en la miniatura → Abrir lightbox
       card.querySelector('.model-thumb-container').addEventListener('click', () => {
         openLightbox(model);
+      });
+
+      // Botón Editar y calibrar cuadrícula
+      card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showUploadPanel(true, model);
       });
 
       // Botón Ver
@@ -4582,23 +4591,154 @@ document.addEventListener('DOMContentLoaded', () => {
         const cellKey = `${r}_${c}`;
         if (cellContents[cellKey]) {
           cell.textContent = cellContents[cellKey];
+          if (cellContents[cellKey].startsWith('{{') || cellContents[cellKey].includes(':')) {
+            cell.classList.add('has-field-tag');
+          }
         }
 
         cell.addEventListener('input', () => {
           cellContents[cellKey] = cell.textContent;
+          if (cell.textContent.trim()) {
+            cell.classList.add('has-field-tag');
+          } else {
+            cell.classList.remove('has-field-tag');
+          }
+        });
+
+        cell.addEventListener('click', () => {
+          activeSelectedCell = { row: r, col: c, cellKey, el: cell };
+          document.querySelectorAll('.excel-cell.selected').forEach(el => el.classList.remove('selected'));
+          cell.classList.add('selected');
+          if (selectedCellIndicator) {
+            selectedCellIndicator.textContent = `Celda activa: ${getColumnLetter(c)}${r}`;
+          }
         });
 
         cell.addEventListener('focus', () => {
+          activeSelectedCell = { row: r, col: c, cellKey, el: cell };
+          document.querySelectorAll('.excel-cell.selected').forEach(el => el.classList.remove('selected'));
           cell.classList.add('selected');
+          if (selectedCellIndicator) {
+            selectedCellIndicator.textContent = `Celda activa: ${getColumnLetter(c)}${r}`;
+          }
         });
+
         cell.addEventListener('blur', () => {
-          cell.classList.remove('selected');
+          // No removemos activeSelectedCell inmediatamente para permitir hacer clic en los tags de campo
         });
 
         row.appendChild(cell);
       }
       excelGridOverlay.appendChild(row);
     }
+  }
+
+  // ── Lista de campos detectados de la Factura / Nota de Venta ───────────────
+  const AVAILABLE_DOCUMENT_FIELDS = [
+    { label: 'FECHA EMISIÓN', tag: '{{FECHA_EMISION}}' },
+    { label: 'CLIENTE', tag: '{{CLIENTE}}' },
+    { label: 'DIRECCIÓN', tag: '{{DIRECCION}}' },
+    { label: 'USUARIO', tag: '{{USUARIO}}' },
+    { label: 'FORMA PAGO', tag: '{{FORMA_PAGO}}' },
+    { label: 'GUÍA REMISIÓN', tag: '{{GUIA_REMISION}}' },
+    { label: 'R.U.C./C.I.', tag: '{{RUC_CI}}' },
+    { label: 'TELÉFONOS', tag: '{{TELEFONO}}' },
+    { label: 'CANTIDAD', tag: '{{CANT}}' },
+    { label: 'CÓDIGO', tag: '{{CODIGO}}' },
+    { label: 'DESCRIPCIÓN', tag: '{{DESCRIPCION}}' },
+    { label: 'VALOR UNITARIO', tag: '{{VALOR_UNITARIO}}' },
+    { label: 'VALOR TOTAL', tag: '{{VALOR_TOTAL}}' },
+    { label: 'VALOR TOTAL $', tag: '{{TOTAL_PAGAR}}' },
+    { label: 'CAMBIO $', tag: '{{CAMBIO}}' },
+    { label: 'SON (LETRAS)', tag: '{{SON_LETRAS}}' },
+    { label: 'ENTREGUE CONFORME', tag: '{{ENTREGUE_CONFORME}}' },
+    { label: 'RECIBÍ CONFORME', tag: '{{RECIBI_CONFORME}}' }
+  ];
+
+  let activeSelectedCell = null;
+  const fieldTagsContainer = document.getElementById('field-tags-container');
+  const selectedCellIndicator = document.getElementById('selected-cell-indicator');
+  const btnAutoMapFields = document.getElementById('btn-auto-map-fields');
+
+  function initFieldTagButtons() {
+    if (!fieldTagsContainer) return;
+    fieldTagsContainer.innerHTML = '';
+
+    AVAILABLE_DOCUMENT_FIELDS.forEach(f => {
+      const tagBtn = document.createElement('button');
+      tagBtn.type = 'button';
+      tagBtn.className = 'field-tag-btn';
+      tagBtn.textContent = f.label;
+      tagBtn.title = `Asignar ${f.tag} a la celda activa`;
+
+      tagBtn.addEventListener('click', () => {
+        if (!activeSelectedCell || !activeSelectedCell.el) {
+          showToast('Selecciona primero una celda en la cuadrícula Excel para asignarle este campo.', 'info');
+          return;
+        }
+        activeSelectedCell.el.textContent = f.tag;
+        activeSelectedCell.el.classList.add('has-field-tag');
+        cellContents[activeSelectedCell.cellKey] = f.tag;
+        showToast(`Campo "${f.label}" asignado a celda ${getColumnLetter(activeSelectedCell.col)}${activeSelectedCell.row}`, 'success');
+      });
+
+      fieldTagsContainer.appendChild(tagBtn);
+    });
+  }
+  initFieldTagButtons();
+
+  // ── Auto-Calibración Inteligente según la plantilla física de iZASKUN ───────
+  if (btnAutoMapFields) {
+    btnAutoMapFields.addEventListener('click', () => {
+      // Limpiar contenidos previos
+      cellContents = {};
+
+      // Mapeo exacto calibrado a la plantilla de iZASKUN:
+      // Fila 8: FECHA DE EMISIÓN y GUÍA DE REMISIÓN
+      cellContents['8_3'] = '{{FECHA_EMISION}}';  // Columna C8
+      cellContents['8_9'] = '{{USUARIO}}';        // Columna I8
+      cellContents['8_13'] = '{{GUIA_REMISION}}'; // Columna M8
+
+      // Fila 9: CLIENTE, FORMA PAGO y RUC/CI
+      cellContents['9_3'] = '{{CLIENTE}}';        // Columna C9
+      cellContents['9_9'] = '{{FORMA_PAGO}}';     // Columna I9
+      cellContents['9_13'] = '{{RUC_CI}}';        // Columna M9
+
+      // Fila 10: DIRECCIÓN y TELÉFONOS
+      cellContents['10_3'] = '{{DIRECCION}}';     // Columna C10
+      cellContents['10_13'] = '{{TELEFONO}}';     // Columna M10
+
+      // Fila 12: Encabezados de tabla de productos (A12 - P12)
+      cellContents['12_1'] = 'CANT.';
+      cellContents['12_2'] = 'CODIGO';
+      cellContents['12_5'] = 'DESCRIPCION';
+      cellContents['12_13'] = 'VALOR UNITARIO';
+      cellContents['12_15'] = 'VALOR TOTAL';
+
+      // Fila 13: Primera fila de ítems / productos dinámicos
+      cellContents['13_1'] = '{{CANT}}';
+      cellContents['13_2'] = '{{CODIGO}}';
+      cellContents['13_5'] = '{{DESCRIPCION}}';
+      cellContents['13_13'] = '{{VALOR_UNITARIO}}';
+      cellContents['13_15'] = '{{VALOR_TOTAL}}';
+
+      // Fila 30: Total a Pagar $
+      cellContents['30_15'] = '{{TOTAL_PAGAR}}';  // Columna O30
+
+      // Fila 31: Son en letras
+      cellContents['31_2'] = '{{SON_LETRAS}}';    // Columna B31
+
+      // Fila 34: Forma de Pago y Cambio
+      cellContents['34_2'] = '{{FORMA_PAGO_EF}}'; // Columna B34
+      cellContents['34_15'] = '{{CAMBIO}}';       // Columna O34
+
+      // Fila 35: Firmas Entrega y Recepción
+      cellContents['35_6'] = '{{ENTREGUE_CONFORME}}'; // Columna F35
+      cellContents['35_10'] = '{{RECIBI_CONFORME}}';   // Columna J35
+
+      buildExcelGridOverlay();
+      showToast('¡Campos ubicados y calibrados automáticamente sobre la plantilla!', 'success');
+    });
   }
 
   // ── Eventos de sliders de calibración ───────────────────────────────────────
@@ -4780,6 +4920,23 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileName = model.archivo_nombre || '';
       selectedFileType = model.archivo_tipo || '';
 
+      if (model.mapeo_celdas) {
+        try {
+          const map = typeof model.mapeo_celdas === 'string' ? JSON.parse(model.mapeo_celdas) : model.mapeo_celdas;
+          if (map.colWidths) colWidths = map.colWidths;
+          if (map.rowHeights) rowHeights = map.rowHeights;
+          if (map.cellContents) cellContents = map.cellContents;
+          if (map.offsetX !== undefined) currentOffsetX = map.offsetX;
+          if (map.offsetY !== undefined) currentOffsetY = map.offsetY;
+          if (map.opacity !== undefined) currentOpacity = map.opacity;
+
+          if (offsetXInput) offsetXInput.value = currentOffsetX;
+          if (offsetYInput) offsetYInput.value = currentOffsetY;
+          if (opacitySlider) opacitySlider.value = currentOpacity;
+          if (opacityVal) opacityVal.textContent = `${Math.round(currentOpacity * 100)}%`;
+        } catch(e) { console.error('Error restaurando mapeo de celdas:', e); }
+      }
+
       if (selectedFileBase64 && previewImg) {
         previewImg.src = selectedFileBase64;
         if (previewBox) previewBox.style.display = 'block';
@@ -4789,6 +4946,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (excelBgImg) {
           excelBgImg.src = selectedFileBase64;
           excelBgImg.style.opacity = currentOpacity;
+          updateImagePosition();
         }
         if (gridCalibSection) {
           gridCalibSection.style.display = 'block';
@@ -4864,12 +5022,20 @@ document.addEventListener('DOMContentLoaded', () => {
         archivo_nombre: selectedFileName || 'modelo.png',
         archivo_tipo: selectedFileType || 'image/png',
         archivo_data: selectedFileBase64,
+        mapeo_celdas: {
+          colWidths,
+          rowHeights,
+          cellContents,
+          offsetX: currentOffsetX,
+          offsetY: currentOffsetY,
+          opacity: currentOpacity
+        },
         es_predeterminado: esPredeterminado
       };
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y calibrado exitosamente!', 'success');
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo y cuadrícula de campos guardados exitosamente!', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
       } else {
