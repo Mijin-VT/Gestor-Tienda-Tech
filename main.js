@@ -2207,20 +2207,16 @@ async function ensureModelosDocumentosTable() {
       archivo_nombre VARCHAR(255),
       archivo_tipo VARCHAR(50),
       archivo_data TEXT NOT NULL,
-      mapeo_celdas JSONB,
       es_predeterminado BOOLEAN DEFAULT FALSE,
       fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  try {
-    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS mapeo_celdas JSONB;`);
-  } catch (e) {}
 }
 
 ipcMain.handle('db:get-modelos-documentos', async (event, tipo) => {
   try {
     await ensureModelosDocumentosTable();
-    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, mapeo_celdas, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
+    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
     const params = {};
     if (tipo && tipo !== 'Todos') {
       queryStr += ' WHERE tipo = @tipo';
@@ -2240,7 +2236,6 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
     await ensureModelosDocumentosTable();
     const esPred = modelo.es_predeterminado === true || modelo.es_predeterminado === 'true' || modelo.es_predeterminado === 1;
     const docTipo = modelo.tipo || 'Factura';
-    const mapeoCeldasJson = modelo.mapeo_celdas ? JSON.stringify(modelo.mapeo_celdas) : null;
 
     if (esPred) {
       await db.query('UPDATE modelos_documentos SET es_predeterminado = FALSE WHERE tipo = @tipo', { tipo: docTipo });
@@ -2253,7 +2248,6 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
             archivo_nombre = COALESCE(@archivo_nombre, archivo_nombre),
             archivo_tipo = COALESCE(@archivo_tipo, archivo_tipo),
             archivo_data = COALESCE(@archivo_data, archivo_data),
-            mapeo_celdas = COALESCE(@mapeo_celdas::jsonb, mapeo_celdas),
             es_predeterminado = @es_predeterminado
         WHERE id = @id
       `, {
@@ -2263,15 +2257,14 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
         archivo_nombre: modelo.archivo_nombre || null,
         archivo_tipo: modelo.archivo_tipo || null,
         archivo_data: modelo.archivo_data || null,
-        mapeo_celdas: mapeoCeldasJson,
         es_predeterminado: esPred,
         id: parseInt(modelo.id, 10)
       });
       return { success: true, id: parseInt(modelo.id, 10) };
     } else {
       const result = await db.query(`
-        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, mapeo_celdas, es_predeterminado)
-        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @mapeo_celdas::jsonb, @es_predeterminado)
+        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, es_predeterminado)
+        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @es_predeterminado)
         RETURNING id
       `, {
         nombre: modelo.nombre || 'Modelo sin título',
@@ -2280,7 +2273,6 @@ ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
         archivo_nombre: modelo.archivo_nombre || 'documento.png',
         archivo_tipo: modelo.archivo_tipo || 'image/png',
         archivo_data: modelo.archivo_data,
-        mapeo_celdas: mapeoCeldasJson,
         es_predeterminado: esPred
       });
       const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;
@@ -2312,4 +2304,59 @@ ipcMain.handle('db:set-predeterminado-modelo', async (event, { id, tipo }) => {
     console.error('Error al establecer modelo predeterminado:', err);
     return { success: false, message: err.message };
   }
+});
+
+// ============================================================================
+// MOTOR DE PROCESAMIENTO VISUAL (OpenCV + NumPy + Pillow)
+// ============================================================================
+
+ipcMain.handle('engine:render-template-invoice', async (event, payload) => {
+  return new Promise((resolve) => {
+    try {
+      const { spawn } = require('child_process');
+      const scriptPath = path.join(__dirname, 'engine_invoice_processor.py');
+      const pythonExe = process.platform === 'win32' ? 'python' : 'python3';
+
+      const child = spawn(pythonExe, [scriptPath, '--stdin'], {
+        cwd: __dirname,
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+      });
+
+      let stdoutData = '';
+      let stderrData = '';
+
+      child.stdout.on('data', (chunk) => {
+        stdoutData += chunk.toString('utf-8');
+      });
+
+      child.stderr.on('data', (chunk) => {
+        stderrData += chunk.toString('utf-8');
+      });
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          console.error('Error en engine_invoice_processor.py:', stderrData);
+          resolve({ success: false, message: stderrData || `El proceso terminó con código ${code}` });
+          return;
+        }
+        try {
+          const parsed = JSON.parse(stdoutData.trim());
+          resolve(parsed);
+        } catch (e) {
+          console.error('Error parseando JSON de Python:', stdoutData);
+          resolve({ success: false, message: 'Respuesta inválida del motor de visión computacional.', raw: stdoutData });
+        }
+      });
+
+      child.on('error', (err) => {
+        console.error('Error al invocar Python:', err);
+        resolve({ success: false, message: `No se pudo iniciar Python: ${err.message}` });
+      });
+
+      child.stdin.write(JSON.stringify(payload));
+      child.stdin.end();
+    } catch (err) {
+      resolve({ success: false, message: err.message });
+    }
+  });
 });

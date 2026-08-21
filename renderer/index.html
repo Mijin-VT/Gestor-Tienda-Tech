@@ -1829,12 +1829,15 @@
       <div id="invoice-preview-container" style="padding: 25px; overflow-y: auto; flex-grow: 1; background: #fff; color: #1e293b; border-radius: 8px; margin: 15px;">
         <!-- Contenido HTML de la Factura renderizado dinámicamente -->
       </div>
-      <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; background: rgba(0,0,0,0.1);">
+      <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 10px; background: rgba(0,0,0,0.1); flex-wrap: wrap;">
+        <button type="button" id="btn-render-with-template" class="btn-secondary" style="width: auto; padding: 10px 18px; margin-top: 0; border: 1px solid #8b5cf6; color: #fff; background: rgba(139, 92, 246, 0.25);">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Renderizar sobre Modelo (OpenCV + PIL)
+        </button>
         <button type="button" id="btn-print-printer" class="btn-primary" style="width: auto; padding: 10px 20px;">
-          <i class="fa-solid fa-print"></i> Imprimir en Impresora Detectada
+          <i class="fa-solid fa-print"></i> Imprimir
         </button>
         <button type="button" id="btn-print-pdf" class="btn-secondary" style="width: auto; padding: 10px 20px; margin-top: 0; border: 1px solid var(--primary); color: #fff; background: var(--primary-dark);">
-          <i class="fa-solid fa-file-pdf"></i> Guardar como PDF
+          <i class="fa-solid fa-file-pdf"></i> Guardar PDF
         </button>
         <button type="button" class="btn-secondary modal-close-btn" style="width: auto; padding: 10px 20px; margin-top: 0;">
           Cerrar
@@ -1929,79 +1932,6 @@
                 <div id="model-preview-box" class="model-preview-box">
                   <img id="model-preview-img" src="" alt="Vista previa">
                   <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;" id="model-file-info"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Editor de Cuadrícula Tipo Excel sobre Imagen con Transparencia -->
-            <div id="excel-grid-calibration-section" style="display: none; margin-bottom: 20px;">
-              <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-table-cells" style="color: var(--success); font-size: 1.1rem;"></i>
-                    <strong style="color: var(--text-main); font-size: 0.92rem;">Alineación de Cuadrícula Excel</strong>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">(Haz clic o escribe en las celdas para ubicar tus columnas)</span>
-                  </div>
-
-                  <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
-                      <span><i class="fa-solid fa-circle-half-stroke"></i> Transparencia Imagen:</span>
-                      <input type="range" id="grid-img-opacity" min="0.1" max="1" step="0.05" value="0.45" style="width: 100px; accent-color: var(--primary);">
-                      <span id="grid-img-opacity-val" style="font-weight: 600; color: var(--text-main); width: 35px;">45%</span>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
-                      <span><i class="fa-solid fa-arrows-up-down"></i> Altura Filas:</span>
-                      <input type="range" id="grid-row-height" min="18" max="45" step="1" value="26" style="width: 75px; accent-color: var(--success);">
-                      <span id="grid-row-height-val" style="font-weight: 600; color: var(--text-main); width: 28px;">26px</span>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted);">
-                      <span><i class="fa-solid fa-arrows-left-right"></i> Ancho Col:</span>
-                      <input type="range" id="grid-col-width" min="30" max="100" step="2" value="55" style="width: 75px; accent-color: var(--warning);">
-                      <span id="grid-col-width-val" style="font-weight: 600; color: var(--text-main); width: 32px;">55px</span>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-muted);">
-                      <span>Posición X/Y:</span>
-                      <input type="number" id="grid-img-offset-x" value="0" style="width: 50px; height: 26px; padding: 2px 4px; font-size: 0.8rem; background: var(--bg-primary); color: #fff; border: 1px solid var(--card-border); border-radius: 4px;" title="Desplazamiento horizontal (X)">
-                      <input type="number" id="grid-img-offset-y" value="0" style="width: 50px; height: 26px; padding: 2px 4px; font-size: 0.8rem; background: var(--bg-primary); color: #fff; border: 1px solid var(--card-border); border-radius: 4px;" title="Desplazamiento vertical (Y)">
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 4px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 8px;">
-                      <button type="button" id="btn-add-col-left" class="btn-secondary" style="width: auto; padding: 4px 7px; font-size: 0.75rem; margin: 0;" title="Insertar Columna"><i class="fa-solid fa-plus"></i> Col</button>
-                      <button type="button" id="btn-del-col" class="btn-secondary" style="width: auto; padding: 4px 7px; font-size: 0.75rem; margin: 0; color: #ef4444;" title="Eliminar Columna"><i class="fa-solid fa-trash-can"></i> Col</button>
-                      <button type="button" id="btn-add-row-above" class="btn-secondary" style="width: auto; padding: 4px 7px; font-size: 0.75rem; margin: 0;" title="Insertar Fila"><i class="fa-solid fa-plus"></i> Fila</button>
-                      <button type="button" id="btn-del-row" class="btn-secondary" style="width: auto; padding: 4px 7px; font-size: 0.75rem; margin: 0; color: #ef4444;" title="Eliminar Fila"><i class="fa-solid fa-trash-can"></i> Fila</button>
-                    </div>
-
-                    <button type="button" id="btn-auto-map-fields" class="btn-primary" style="width: auto; padding: 4px 12px; font-size: 0.78rem; margin: 0; background: #059669;" title="Ubica automáticamente todos los campos detectados">
-                      <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Calibrar Campos
-                    </button>
-
-                    <button type="button" id="btn-reset-grid-calib" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.78rem; margin: 0;">
-                      <i class="fa-solid fa-rotate-left"></i> Restablecer
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Barra de Etiquetas / Asignador de Campos a Celdas -->
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-tags" style="color: var(--primary);"></i> Asignar a celda seleccionada:</span>
-                  <div id="field-tags-container" style="display: flex; gap: 4px; flex-wrap: wrap;">
-                    <!-- Botones de tags generados dinámicamente -->
-                  </div>
-                  <span id="selected-cell-indicator" style="margin-left: auto; font-size: 0.75rem; color: var(--warning); font-weight: 600;">Celda activa: Ninguna</span>
-                </div>
-
-                <!-- Contenedor con la imagen transparente y la hoja excel interactiva -->
-                <div class="excel-sheet-viewport" id="excel-sheet-viewport">
-                  <div class="excel-sheet-canvas-container" id="excel-sheet-canvas-container">
-                    <img id="excel-bg-img" class="excel-bg-img" src="" alt="Fondo Factura">
-                    <div class="excel-grid-overlay" id="excel-grid-overlay">
-                      <!-- Generado dinámicamente con letras de columna (A-P...) y números de fila (1-35...) -->
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

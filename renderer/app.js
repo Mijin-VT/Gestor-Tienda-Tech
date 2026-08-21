@@ -2072,6 +2072,77 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
       }
 
+      window.currentPreviewInvoiceData = {
+        numero_factura: res.invoice.numero_factura,
+        fecha: res.invoice.fecha_emision ? new Date(res.invoice.fecha_emision).toLocaleString() : new Date().toLocaleString(),
+        cliente_nombre: res.invoice.cliente_nombre || 'Consumidor Final',
+        cliente_doc: res.invoice.cliente_documento || '9999999999999',
+        cliente_telefono: res.invoice.cliente_telefono || 'N/A',
+        cliente_direccion: res.invoice.cliente_direccion || 'N/A',
+        cliente_email: res.invoice.cliente_correo || '',
+        metodo_pago: res.invoice.metodo_pago || 'Efectivo',
+        clave_acceso: res.invoice.clave_acceso_sri || '',
+        items: res.items || [],
+        subtotal: parseFloat(res.invoice.subtotal) || 0,
+        descuento: parseFloat(res.invoice.descuento) || 0,
+        abono: parseFloat(res.invoice.abono) || 0,
+        iva: parseFloat(res.invoice.impuesto) || 0,
+        total: parseFloat(res.invoice.total) || 0
+      };
+
+      const btnRenderWithTemplate = document.getElementById('btn-render-with-template');
+      if (btnRenderWithTemplate) {
+        btnRenderWithTemplate.onclick = async () => {
+          try {
+            const modelsRes = await window.api.getModelosDocumentos('Factura');
+            let models = (modelsRes && modelsRes.success && modelsRes.recordset) ? modelsRes.recordset : [];
+            if (models.length === 0) {
+              const allRes = await window.api.getModelosDocumentos('Todos');
+              models = (allRes && allRes.success && allRes.recordset) ? allRes.recordset : [];
+            }
+
+            if (models.length === 0) {
+              showToast('No tienes modelos de imagen registrados. Sube uno en el botón "Modelos".', 'warning');
+              return;
+            }
+
+            const chosenModel = models.find(m => m.es_predeterminado) || models[0];
+            showToast(`Estampando datos en plantilla "${chosenModel.nombre}" (OpenCV + Pillow)...`, 'info');
+
+            const resImg = await window.api.renderTemplateInvoice({
+              template_image: chosenModel.archivo_data,
+              invoice_data: window.currentPreviewInvoiceData,
+              options: {
+                auto_perspective: true,
+                auto_straighten: true,
+                enhance_contrast: true,
+                detect_tables: true
+              }
+            });
+
+            if (resImg && resImg.success) {
+              const container = document.getElementById('invoice-preview-container');
+              if (container) {
+                container.innerHTML = `
+                  <div style="text-align: center; background: #0f172a; padding: 15px; border-radius: 8px;">
+                    <div style="color: #10b981; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;">
+                      <i class="fa-solid fa-check-circle"></i> Renderizado Visual (OpenCV + NumPy + Pillow) • Plantilla: <strong>${escapeHtml(chosenModel.nombre)}</strong>
+                    </div>
+                    <img src="${resImg.image_base64}" style="max-width: 100%; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.5);" alt="Factura procesada">
+                  </div>
+                `;
+                showToast('¡Factura estampada sobre la plantilla visualmente!', 'success');
+              }
+            } else {
+              showToast('Error al renderizar plantilla: ' + (resImg ? resImg.message : ''), 'error');
+            }
+          } catch(e) {
+            console.error('Error renderizando con plantilla:', e);
+            showToast('Error al procesar plantilla.', 'error');
+          }
+        };
+      }
+
       const btnPrinter = document.getElementById('btn-print-printer');
       if (btnPrinter) {
         btnPrinter.onclick = async () => {
@@ -4327,8 +4398,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="model-card-footer">
             <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn edit" title="Editar y calibrar cuadrícula" data-action="edit">
-                <i class="fa-solid fa-pen-to-square"></i>
+              <button class="model-action-btn test" title="Procesar y Estampar Factura de Prueba (OpenCV + Pillow)" data-action="test-render" style="color: #c084fc;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
               </button>
               <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
                 <i class="fa-solid fa-star"></i>
@@ -4349,10 +4420,65 @@ document.addEventListener('DOMContentLoaded', () => {
         openLightbox(model);
       });
 
-      // Botón Editar y calibrar cuadrícula
-      card.querySelector('[data-action="edit"]').addEventListener('click', (e) => {
+      // Botón Probar / Renderizar con OpenCV + Pillow
+      card.querySelector('[data-action="test-render"]').addEventListener('click', async (e) => {
         e.stopPropagation();
-        showUploadPanel(true, model);
+        showToast('Procesando imagen con OpenCV + NumPy y renderizando con Pillow...', 'info');
+
+        const sampleInvoice = {
+          numero_factura: '001-001-000000888',
+          fecha: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5),
+          cliente_nombre: 'Carlos E. Mendoza',
+          cliente_doc: '1723456789',
+          cliente_telefono: '+593 987 654 321',
+          cliente_direccion: 'Av. Amazonas N24-105 y Colón',
+          cliente_email: 'carlos.mendoza@email.com',
+          metodo_pago: 'Efectivo',
+          clave_acceso: '2108202601179234567800120010010000008881234567819',
+          items: [
+            { cantidad: 1, descripcion: 'Mantenimiento preventivo y cambio de pasta térmica', precio: 35.00, total: 35.00 },
+            { cantidad: 1, descripcion: 'Módulo de Memoria RAM 16GB DDR4 Kingston Fury', precio: 48.00, total: 48.00 },
+            { cantidad: 2, descripcion: 'Cable HDMI 2.1 Ultra High Speed 8K 2m', precio: 12.50, total: 25.00 }
+          ],
+          subtotal: 108.00,
+          descuento: 0.00,
+          abono: 20.00,
+          iva: 16.20,
+          total: 104.20
+        };
+
+        try {
+          const res = await window.api.renderTemplateInvoice({
+            template_image: model.archivo_data,
+            invoice_data: sampleInvoice,
+            options: {
+              auto_perspective: true,
+              auto_straighten: true,
+              enhance_contrast: true,
+              detect_tables: true
+            }
+          });
+
+          if (res && res.success) {
+            const prep = res.preprocessing_report || {};
+            const infoText = `Inclinación: ${prep.skew_angle_deg || 0}° | Perspectiva: ${prep.perspective_corrected ? 'Corregida' : 'OK'} | Tablas detectadas: ${prep.detected_table_boxes ? prep.detected_table_boxes.length : 0}`;
+            
+            openLightbox({
+              nombre: `Factura Muestra sobre: ${model.nombre}`,
+              tipo: model.tipo,
+              archivo_data: res.image_base64,
+              archivo_nombre: 'factura_procesada.png',
+              descripcion: `Procesado mediante OpenCV + NumPy y generado con Pillow. ${infoText}`,
+              fecha_subida: new Date().toISOString()
+            });
+            showToast('¡Factura renderizada con éxito sobre la plantilla!', 'success');
+          } else {
+            showToast('Error en el motor visual: ' + (res ? res.message : 'Desconocido'), 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Error al invocar motor de procesamiento: ' + err.message, 'error');
+        }
       });
 
       // Botón Ver
@@ -4404,603 +4530,6 @@ document.addEventListener('DOMContentLoaded', () => {
     lightboxModal.style.display = 'flex';
   }
 
-  // ── Elementos de Calibración Cuadrícula Excel ──────────────────────────────
-  const gridCalibSection = document.getElementById('excel-grid-calibration-section');
-  const excelBgImg       = document.getElementById('excel-bg-img');
-  const excelGridOverlay = document.getElementById('excel-grid-overlay');
-  const opacitySlider    = document.getElementById('grid-img-opacity');
-  const opacityVal       = document.getElementById('grid-img-opacity-val');
-  const rowHeightSlider  = document.getElementById('grid-row-height');
-  const rowHeightVal     = document.getElementById('grid-row-height-val');
-  const colWidthSlider   = document.getElementById('grid-col-width');
-  const colWidthVal      = document.getElementById('grid-col-width-val');
-  const btnResetGrid     = document.getElementById('btn-reset-grid-calib');
-
-  let gridRowsCount = 35;
-  let gridColsCount = 18; // A to R
-  let defaultRowHeight = 26;
-  let defaultColWidth = 55;
-  let currentOpacity = 0.45;
-
-  let activeSelectedCell = null;
-  const fieldTagsContainer = document.getElementById('field-tags-container');
-  const selectedCellIndicator = document.getElementById('selected-cell-indicator');
-  const btnAutoMapFields = document.getElementById('btn-auto-map-fields');
-
-  // Arrays de tamaños individuales para cada fila y cada columna
-  let colWidths = {};
-  let rowHeights = {};
-  let cellContents = {}; // Guardar contenido escrito en celdas si se redibuja
-
-  function initGridDimensions() {
-    for (let c = 1; c <= gridColsCount; c++) {
-      if (!colWidths[c]) colWidths[c] = defaultColWidth;
-    }
-    for (let r = 1; r <= gridRowsCount; r++) {
-      if (!rowHeights[r]) rowHeights[r] = defaultRowHeight;
-    }
-  }
-  initGridDimensions();
-
-  function getColumnLetter(colIndex) {
-    let temp, letter = '';
-    while (colIndex > 0) {
-      temp = (colIndex - 1) % 26;
-      letter = String.fromCharCode(65 + temp) + letter;
-      colIndex = (colIndex - temp - 1) / 26;
-    }
-    return letter;
-  }
-
-  // ── Context Menu (Clic Derecho en Cuadrícula) ──────────────────────────────
-  let contextMenu = document.getElementById('excel-grid-context-menu');
-  if (!contextMenu) {
-    contextMenu = document.createElement('div');
-    contextMenu.className = 'excel-context-menu';
-    contextMenu.id = 'excel-grid-context-menu';
-    document.body.appendChild(contextMenu);
-  }
-
-  function hideContextMenu() {
-    if (contextMenu) contextMenu.style.display = 'none';
-  }
-  document.addEventListener('click', hideContextMenu);
-  document.addEventListener('contextmenu', (e) => {
-    if (!e.target.closest('#excel-grid-overlay') && !e.target.closest('#excel-grid-context-menu')) {
-      hideContextMenu();
-    }
-  });
-
-  function showContextMenu(x, y, items) {
-    if (!contextMenu) return;
-    contextMenu.innerHTML = '';
-    items.forEach(item => {
-      if (item.separator) {
-        const sep = document.createElement('div');
-        sep.className = 'excel-context-separator';
-        contextMenu.appendChild(sep);
-      } else {
-        const el = document.createElement('div');
-        el.className = `excel-context-item${item.danger ? ' danger' : ''}`;
-        el.innerHTML = `<i class="${item.icon}"></i> <span>${item.label}</span>`;
-        el.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          hideContextMenu();
-          if (item.action) item.action();
-        });
-        contextMenu.appendChild(el);
-      }
-    });
-
-    contextMenu.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
-    contextMenu.style.top = `${Math.min(y, window.innerHeight - 250)}px`;
-    contextMenu.style.display = 'block';
-  }
-
-  // ── Funciones de Inserción y Eliminación de Filas y Columnas ────────────────
-  function insertColumnAt(colIndex) {
-    gridColsCount++;
-    const newColWidths = {};
-    const newCellContents = {};
-
-    for (let c = 1; c < colIndex; c++) {
-      newColWidths[c] = colWidths[c] || defaultColWidth;
-    }
-    newColWidths[colIndex] = defaultColWidth;
-    for (let c = colIndex; c < gridColsCount; c++) {
-      newColWidths[c + 1] = colWidths[c] || defaultColWidth;
-    }
-    colWidths = newColWidths;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (c < colIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else {
-        newCellContents[`${r}_${c + 1}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    buildExcelGridOverlay();
-    showToast(`Columna ${getColumnLetter(colIndex)} insertada.`, 'info');
-  }
-
-  function deleteColumnAt(colIndex) {
-    if (gridColsCount <= 1) {
-      showToast('No puedes eliminar la última columna.', 'warning');
-      return;
-    }
-    const letter = getColumnLetter(colIndex);
-    const newColWidths = {};
-    const newCellContents = {};
-
-    for (let c = 1; c < colIndex; c++) {
-      newColWidths[c] = colWidths[c] || defaultColWidth;
-    }
-    for (let c = colIndex + 1; c <= gridColsCount; c++) {
-      newColWidths[c - 1] = colWidths[c] || defaultColWidth;
-    }
-    colWidths = newColWidths;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (c < colIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else if (c > colIndex) {
-        newCellContents[`${r}_${c - 1}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    gridColsCount--;
-    buildExcelGridOverlay();
-    showToast(`Columna ${letter} eliminada.`, 'info');
-  }
-
-  function insertRowAt(rowIndex) {
-    gridRowsCount++;
-    const newRowHeights = {};
-    const newCellContents = {};
-
-    for (let r = 1; r < rowIndex; r++) {
-      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
-    }
-    newRowHeights[rowIndex] = defaultRowHeight;
-    for (let r = rowIndex; r < gridRowsCount; r++) {
-      newRowHeights[r + 1] = rowHeights[r] || defaultRowHeight;
-    }
-    rowHeights = newRowHeights;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (r < rowIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else {
-        newCellContents[`${r + 1}_${c}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    buildExcelGridOverlay();
-    showToast(`Fila ${rowIndex} insertada.`, 'info');
-  }
-
-  function deleteRowAt(rowIndex) {
-    if (gridRowsCount <= 1) {
-      showToast('No puedes eliminar la última fila.', 'warning');
-      return;
-    }
-    const newRowHeights = {};
-    const newCellContents = {};
-
-    for (let r = 1; r < rowIndex; r++) {
-      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
-    }
-    for (let r = rowIndex + 1; r <= gridRowsCount; r++) {
-      newRowHeights[r - 1] = rowHeights[r] || defaultRowHeight;
-    }
-    rowHeights = newRowHeights;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (r < rowIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else if (r > rowIndex) {
-        newCellContents[`${r - 1}_${c}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    gridRowsCount--;
-    buildExcelGridOverlay();
-    showToast(`Fila ${rowIndex} eliminada.`, 'info');
-  }
-
-  // ── Generar Cuadrícula Excel Interactiva con Arrastre de Filas y Columnas ───
-  function buildExcelGridOverlay() {
-    if (!excelGridOverlay) return;
-    excelGridOverlay.innerHTML = '';
-
-    // Fila 0: Encabezados de Columna (A, B, C, D, E...)
-    const headerRow = document.createElement('div');
-    headerRow.className = 'excel-row';
-
-    // Esquina superior izquierda
-    const corner = document.createElement('div');
-    corner.className = 'excel-header-corner';
-    headerRow.appendChild(corner);
-
-    for (let c = 1; c <= gridColsCount; c++) {
-      const colHeader = document.createElement('div');
-      colHeader.className = 'excel-header-col';
-      colHeader.dataset.colIndex = c;
-      const w = colWidths[c] || defaultColWidth;
-      colHeader.style.width = `${w}px`;
-      colHeader.style.minWidth = `${w}px`;
-      colHeader.style.maxWidth = `${w}px`;
-
-      const titleSpan = document.createElement('span');
-      titleSpan.textContent = getColumnLetter(c);
-      colHeader.appendChild(titleSpan);
-
-      // Resizer para arrastrar y cambiar ancho de columna
-      const resizer = document.createElement('div');
-      resizer.className = 'excel-col-resizer';
-      resizer.title = `Arrastra para redimensionar columna ${getColumnLetter(c)}`;
-
-      resizer.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        resizer.classList.add('resizing');
-        const startX = e.pageX;
-        const startWidth = colWidths[c] || defaultColWidth;
-
-        const onMouseMove = (moveEv) => {
-          const deltaX = moveEv.pageX - startX;
-          const newWidth = Math.max(20, startWidth + deltaX);
-          colWidths[c] = newWidth;
-
-          colHeader.style.width = `${newWidth}px`;
-          colHeader.style.minWidth = `${newWidth}px`;
-          colHeader.style.maxWidth = `${newWidth}px`;
-          document.querySelectorAll(`.excel-cell[data-col-index="${c}"]`).forEach(cell => {
-            cell.style.width = `${newWidth}px`;
-            cell.style.minWidth = `${newWidth}px`;
-            cell.style.maxWidth = `${newWidth}px`;
-          });
-        };
-
-        const onMouseUp = () => {
-          resizer.classList.remove('resizing');
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-      });
-
-      // Clic derecho en cabecera de columna
-      colHeader.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showContextMenu(e.clientX, e.clientY, [
-          { label: `Insertar Columna antes de ${getColumnLetter(c)}`, icon: 'fa-solid fa-plus', action: () => insertColumnAt(c) },
-          { label: `Insertar Columna después de ${getColumnLetter(c)}`, icon: 'fa-solid fa-plus', action: () => insertColumnAt(c + 1) },
-          { separator: true },
-          { label: `Eliminar Columna ${getColumnLetter(c)}`, icon: 'fa-solid fa-trash-can', danger: true, action: () => deleteColumnAt(c) }
-        ]);
-      });
-
-      colHeader.appendChild(resizer);
-      headerRow.appendChild(colHeader);
-    }
-    excelGridOverlay.appendChild(headerRow);
-
-    // Filas de datos (1, 2, 3, 4, 5... 35)
-    for (let r = 1; r <= gridRowsCount; r++) {
-      const row = document.createElement('div');
-      row.className = 'excel-row';
-      row.dataset.rowIndex = r;
-      const h = rowHeights[r] || defaultRowHeight;
-
-      // Cabecera de fila con número (1, 2, 3...)
-      const rowHeader = document.createElement('div');
-      rowHeader.className = 'excel-header-row';
-      rowHeader.dataset.rowIndex = r;
-      rowHeader.style.height = `${h}px`;
-      rowHeader.style.lineHeight = `${h}px`;
-
-      const numSpan = document.createElement('span');
-      numSpan.textContent = r;
-      rowHeader.appendChild(numSpan);
-
-      // Clic derecho en cabecera de fila
-      rowHeader.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        showContextMenu(e.clientX, e.clientY, [
-          { label: `Insertar Fila encima de ${r}`, icon: 'fa-solid fa-plus', action: () => insertRowAt(r) },
-          { label: `Insertar Fila debajo de ${r}`, icon: 'fa-solid fa-plus', action: () => insertRowAt(r + 1) },
-          { separator: true },
-          { label: `Eliminar Fila ${r}`, icon: 'fa-solid fa-trash-can', danger: true, action: () => deleteRowAt(r) }
-        ]);
-      });
-
-      // Resizer para arrastrar y cambiar altura de fila
-      const rowResizer = document.createElement('div');
-      rowResizer.className = 'excel-row-resizer';
-      rowResizer.title = `Arrastra para redimensionar fila ${r}`;
-
-      rowResizer.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        rowResizer.classList.add('resizing');
-        const startY = e.pageY;
-        const startHeight = rowHeights[r] || defaultRowHeight;
-
-        const onMouseMove = (moveEv) => {
-          const deltaY = moveEv.pageY - startY;
-          const newHeight = Math.max(16, startHeight + deltaY);
-          rowHeights[r] = newHeight;
-
-          // Actualizar en tiempo real la altura de esta fila
-          rowHeader.style.height = `${newHeight}px`;
-          rowHeader.style.lineHeight = `${newHeight}px`;
-          document.querySelectorAll(`.excel-cell[data-row="${r}"]`).forEach(cell => {
-            cell.style.height = `${newHeight}px`;
-          });
-        };
-
-        const onMouseUp = () => {
-          rowResizer.classList.remove('resizing');
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-      });
-
-      rowHeader.appendChild(rowResizer);
-      row.appendChild(rowHeader);
-
-      // Celdas editables de la fila
-      for (let c = 1; c <= gridColsCount; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'excel-cell';
-        cell.dataset.row = r;
-        cell.dataset.col = getColumnLetter(c);
-        cell.dataset.colIndex = c;
-        const cw = colWidths[c] || defaultColWidth;
-        cell.style.width = `${cw}px`;
-        cell.style.minWidth = `${cw}px`;
-        cell.style.maxWidth = `${cw}px`;
-        cell.style.height = `${h}px`;
-        cell.contentEditable = 'true';
-        cell.spellcheck = false;
-
-        const cellKey = `${r}_${c}`;
-        if (cellContents[cellKey]) {
-          cell.textContent = cellContents[cellKey];
-          if (cellContents[cellKey].startsWith('{{') || cellContents[cellKey].includes(':')) {
-            cell.classList.add('has-field-tag');
-          }
-        }
-
-        cell.addEventListener('input', () => {
-          cellContents[cellKey] = cell.textContent;
-          if (cell.textContent.trim()) {
-            cell.classList.add('has-field-tag');
-          } else {
-            cell.classList.remove('has-field-tag');
-          }
-        });
-
-        cell.addEventListener('click', () => {
-          activeSelectedCell = { row: r, col: c, cellKey, el: cell };
-          document.querySelectorAll('.excel-cell.selected').forEach(el => el.classList.remove('selected'));
-          cell.classList.add('selected');
-          if (selectedCellIndicator) {
-            selectedCellIndicator.textContent = `Celda activa: ${getColumnLetter(c)}${r}`;
-          }
-        });
-
-        cell.addEventListener('focus', () => {
-          activeSelectedCell = { row: r, col: c, cellKey, el: cell };
-          document.querySelectorAll('.excel-cell.selected').forEach(el => el.classList.remove('selected'));
-          cell.classList.add('selected');
-          if (selectedCellIndicator) {
-            selectedCellIndicator.textContent = `Celda activa: ${getColumnLetter(c)}${r}`;
-          }
-        });
-
-        // Clic derecho en celda
-        cell.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          activeSelectedCell = { row: r, col: c, cellKey, el: cell };
-          document.querySelectorAll('.excel-cell.selected').forEach(el => el.classList.remove('selected'));
-          cell.classList.add('selected');
-          if (selectedCellIndicator) {
-            selectedCellIndicator.textContent = `Celda activa: ${getColumnLetter(c)}${r}`;
-          }
-
-          showContextMenu(e.clientX, e.clientY, [
-            { label: `Insertar Columna a la Izquierda`, icon: 'fa-solid fa-plus', action: () => insertColumnAt(c) },
-            { label: `Insertar Columna a la Derecha`, icon: 'fa-solid fa-plus', action: () => insertColumnAt(c + 1) },
-            { separator: true },
-            { label: `Insertar Fila Arriba`, icon: 'fa-solid fa-plus', action: () => insertRowAt(r) },
-            { label: `Insertar Fila Abajo`, icon: 'fa-solid fa-plus', action: () => insertRowAt(r + 1) },
-            { separator: true },
-            { label: `Limpiar Contenido de Celda (${getColumnLetter(c)}${r})`, icon: 'fa-solid fa-eraser', action: () => {
-                cell.textContent = '';
-                cell.classList.remove('has-field-tag');
-                delete cellContents[cellKey];
-                showToast(`Celda ${getColumnLetter(c)}${r} limpiada.`, 'info');
-              }
-            },
-            { separator: true },
-            { label: `Eliminar Fila ${r}`, icon: 'fa-solid fa-trash-can', danger: true, action: () => deleteRowAt(r) },
-            { label: `Eliminar Columna ${getColumnLetter(c)}`, icon: 'fa-solid fa-trash-can', danger: true, action: () => deleteColumnAt(c) }
-          ]);
-        });
-
-        cell.addEventListener('blur', () => {
-          // No removemos activeSelectedCell inmediatamente para permitir hacer clic en los tags de campo
-        });
-
-        row.appendChild(cell);
-      }
-      excelGridOverlay.appendChild(row);
-    }
-  }
-
-  // ── Auto-Calibración Inteligente según la plantilla física de iZASKUN ───────
-  if (btnAutoMapFields) {
-    btnAutoMapFields.addEventListener('click', () => {
-      // Limpiar contenidos previos
-      cellContents = {};
-
-      // Mapeo exacto calibrado a la plantilla de iZASKUN:
-      // Fila 8: FECHA DE EMISIÓN y GUÍA DE REMISIÓN
-      cellContents['8_3'] = '{{FECHA_EMISION}}';  // Columna C8
-      cellContents['8_9'] = '{{USUARIO}}';        // Columna I8
-      cellContents['8_13'] = '{{GUIA_REMISION}}'; // Columna M8
-
-      // Fila 9: CLIENTE, FORMA PAGO y RUC/CI
-      cellContents['9_3'] = '{{CLIENTE}}';        // Columna C9
-      cellContents['9_9'] = '{{FORMA_PAGO}}';     // Columna I9
-      cellContents['9_13'] = '{{RUC_CI}}';        // Columna M9
-
-      // Fila 10: DIRECCIÓN y TELÉFONOS
-      cellContents['10_3'] = '{{DIRECCION}}';     // Columna C10
-      cellContents['10_13'] = '{{TELEFONO}}';     // Columna M10
-
-      // Fila 12: Encabezados de tabla de productos (A12 - P12)
-      cellContents['12_1'] = 'CANT.';
-      cellContents['12_2'] = 'CODIGO';
-      cellContents['12_5'] = 'DESCRIPCION';
-      cellContents['12_13'] = 'VALOR UNITARIO';
-      cellContents['12_15'] = 'VALOR TOTAL';
-
-      // Fila 13: Primera fila de ítems / productos dinámicos
-      cellContents['13_1'] = '{{CANT}}';
-      cellContents['13_2'] = '{{CODIGO}}';
-      cellContents['13_5'] = '{{DESCRIPCION}}';
-      cellContents['13_13'] = '{{VALOR_UNITARIO}}';
-      cellContents['13_15'] = '{{VALOR_TOTAL}}';
-
-      // Fila 30: Total a Pagar $
-      cellContents['30_15'] = '{{TOTAL_PAGAR}}';  // Columna O30
-
-      // Fila 31: Son en letras
-      cellContents['31_2'] = '{{SON_LETRAS}}';    // Columna B31
-
-      // Fila 34: Forma de Pago y Cambio
-      cellContents['34_2'] = '{{FORMA_PAGO_EF}}'; // Columna B34
-      cellContents['34_15'] = '{{CAMBIO}}';       // Columna O34
-
-      // Fila 35: Firmas Entrega y Recepción
-      cellContents['35_6'] = '{{ENTREGUE_CONFORME}}'; // Columna F35
-      cellContents['35_10'] = '{{RECIBI_CONFORME}}';   // Columna J35
-
-      buildExcelGridOverlay();
-      showToast('¡Campos ubicados y calibrados automáticamente sobre la plantilla!', 'success');
-    });
-  }
-
-  // ── Eventos de sliders de calibración ───────────────────────────────────────
-  if (opacitySlider) {
-    opacitySlider.addEventListener('input', (e) => {
-      currentOpacity = parseFloat(e.target.value);
-      if (opacityVal) opacityVal.textContent = `${Math.round(currentOpacity * 100)}%`;
-      if (excelBgImg) excelBgImg.style.opacity = currentOpacity;
-    });
-  }
-
-  if (rowHeightSlider) {
-    rowHeightSlider.addEventListener('input', (e) => {
-      defaultRowHeight = parseInt(e.target.value, 10);
-      if (rowHeightVal) rowHeightVal.textContent = `${defaultRowHeight}px`;
-      for (let r = 1; r <= gridRowsCount; r++) {
-        rowHeights[r] = defaultRowHeight;
-      }
-      buildExcelGridOverlay();
-    });
-  }
-
-  if (colWidthSlider) {
-    colWidthSlider.addEventListener('input', (e) => {
-      defaultColWidth = parseInt(e.target.value, 10);
-      if (colWidthVal) colWidthVal.textContent = `${defaultColWidth}px`;
-      for (let c = 1; c <= gridColsCount; c++) {
-        colWidths[c] = defaultColWidth;
-      }
-      buildExcelGridOverlay();
-    });
-  }
-
-  const offsetXInput   = document.getElementById('grid-img-offset-x');
-  const offsetYInput   = document.getElementById('grid-img-offset-y');
-
-  let currentOffsetX = 0;
-  let currentOffsetY = 0;
-
-  function updateImagePosition() {
-    if (!excelBgImg) return;
-    const topBase = 24; // Altura de la cabecera A, B, C...
-    const leftBase = 34; // Ancho de la cabecera 1, 2, 3...
-    excelBgImg.style.top = `${topBase + currentOffsetY}px`;
-    excelBgImg.style.left = `${leftBase + currentOffsetX}px`;
-  }
-
-  if (offsetXInput) {
-    offsetXInput.addEventListener('input', (e) => {
-      currentOffsetX = parseInt(e.target.value, 10) || 0;
-      updateImagePosition();
-    });
-  }
-
-  if (offsetYInput) {
-    offsetYInput.addEventListener('input', (e) => {
-      currentOffsetY = parseInt(e.target.value, 10) || 0;
-      updateImagePosition();
-    });
-  }
-
-  if (btnResetGrid) {
-    btnResetGrid.addEventListener('click', () => {
-      defaultRowHeight = 26;
-      defaultColWidth = 55;
-      currentOpacity = 0.45;
-      currentOffsetX = 0;
-      currentOffsetY = 0;
-      colWidths = {};
-      rowHeights = {};
-      cellContents = {};
-      initGridDimensions();
-      if (rowHeightSlider) rowHeightSlider.value = 26;
-      if (rowHeightVal) rowHeightVal.textContent = '26px';
-      if (colWidthSlider) colWidthSlider.value = 55;
-      if (colWidthVal) colWidthVal.textContent = '55px';
-      if (opacitySlider) opacitySlider.value = 0.45;
-      if (opacityVal) opacityVal.textContent = '45%';
-      if (offsetXInput) offsetXInput.value = 0;
-      if (offsetYInput) offsetYInput.value = 0;
-      if (excelBgImg) {
-        excelBgImg.style.opacity = 0.45;
-        updateImagePosition();
-      }
-      buildExcelGridOverlay();
-    });
-  }
-
   // ── Manejo de Archivos e Imágenes (Drag & Drop + File Input) ─────────────────
   function handleFileSelection(file) {
     if (!file) return;
@@ -5025,16 +4554,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (previewBox) previewBox.style.display = 'block';
       if (dropzonePrompt) dropzonePrompt.style.display = 'none';
       if (fileInfoEl) fileInfoEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-
-      // Mostrar y calibrar cuadrícula Excel sobre la imagen con transparencia
-      if (excelBgImg) {
-        excelBgImg.src = selectedFileBase64;
-        excelBgImg.style.opacity = currentOpacity;
-      }
-      if (gridCalibSection) {
-        gridCalibSection.style.display = 'block';
-        buildExcelGridOverlay();
-      }
 
       // Autocompletar nombre si está vacío
       if (modelNameInput && !modelNameInput.value.trim()) {
@@ -5077,12 +4596,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ── Toggle / Mostrar / Ocultar Panel de Subida ──────────────────────────────
   function showUploadPanel(isEdit = false, model = null) {
     if (!uploadPanel) return;
     uploadPanel.style.display = 'block';
-    if (toggleUploadBtn) {
-      toggleUploadBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i> <span>Ocultar Panel</span>';
-    }
     uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (isEdit && model) {
@@ -5096,38 +4613,11 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedFileName = model.archivo_nombre || '';
       selectedFileType = model.archivo_tipo || '';
 
-      if (model.mapeo_celdas) {
-        try {
-          const map = typeof model.mapeo_celdas === 'string' ? JSON.parse(model.mapeo_celdas) : model.mapeo_celdas;
-          if (map.colWidths) colWidths = map.colWidths;
-          if (map.rowHeights) rowHeights = map.rowHeights;
-          if (map.cellContents) cellContents = map.cellContents;
-          if (map.offsetX !== undefined) currentOffsetX = map.offsetX;
-          if (map.offsetY !== undefined) currentOffsetY = map.offsetY;
-          if (map.opacity !== undefined) currentOpacity = map.opacity;
-
-          if (offsetXInput) offsetXInput.value = currentOffsetX;
-          if (offsetYInput) offsetYInput.value = currentOffsetY;
-          if (opacitySlider) opacitySlider.value = currentOpacity;
-          if (opacityVal) opacityVal.textContent = `${Math.round(currentOpacity * 100)}%`;
-        } catch(e) { console.error('Error restaurando mapeo de celdas:', e); }
-      }
-
       if (selectedFileBase64 && previewImg) {
         previewImg.src = selectedFileBase64;
         if (previewBox) previewBox.style.display = 'block';
         if (dropzonePrompt) dropzonePrompt.style.display = 'none';
         if (fileInfoEl) fileInfoEl.textContent = model.archivo_nombre || 'Imagen actual';
-
-        if (excelBgImg) {
-          excelBgImg.src = selectedFileBase64;
-          excelBgImg.style.opacity = currentOpacity;
-          updateImagePosition();
-        }
-        if (gridCalibSection) {
-          gridCalibSection.style.display = 'block';
-          buildExcelGridOverlay();
-        }
       }
     } else {
       if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo';
@@ -5139,15 +4629,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (previewBox) previewBox.style.display = 'none';
       if (dropzonePrompt) dropzonePrompt.style.display = 'block';
       if (modelFileInput) modelFileInput.value = '';
-      if (gridCalibSection) gridCalibSection.style.display = 'none';
     }
   }
 
   function hideUploadPanel() {
     if (uploadPanel) uploadPanel.style.display = 'none';
-    if (toggleUploadBtn) {
-      toggleUploadBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Subir Modelo</span>';
-    }
     if (modelForm) modelForm.reset();
     if (modelEditId) modelEditId.value = '';
     selectedFileBase64 = null;
@@ -5155,15 +4641,11 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedFileType = '';
     if (previewBox) previewBox.style.display = 'none';
     if (dropzonePrompt) dropzonePrompt.style.display = 'block';
-    if (gridCalibSection) gridCalibSection.style.display = 'none';
   }
 
   if (toggleUploadBtn) {
-    toggleUploadBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const isHidden = !uploadPanel.style.display || uploadPanel.style.display === 'none';
-      if (isHidden) {
+    toggleUploadBtn.addEventListener('click', () => {
+      if (uploadPanel.style.display === 'none' || !uploadPanel.style.display) {
         showUploadPanel(false);
       } else {
         hideUploadPanel();
@@ -5204,20 +4686,12 @@ document.addEventListener('DOMContentLoaded', () => {
         archivo_nombre: selectedFileName || 'modelo.png',
         archivo_tipo: selectedFileType || 'image/png',
         archivo_data: selectedFileBase64,
-        mapeo_celdas: {
-          colWidths,
-          rowHeights,
-          cellContents,
-          offsetX: currentOffsetX,
-          offsetY: currentOffsetY,
-          opacity: currentOpacity
-        },
         es_predeterminado: esPredeterminado
       };
 
       const res = await window.api.saveModeloDocumento(payload);
       if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo y cuadrícula de campos guardados exitosamente!', 'success');
+        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y guardado exitosamente!', 'success');
         hideUploadPanel();
         await loadAndRenderModels();
       } else {
