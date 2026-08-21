@@ -99,7 +99,5 @@ contextBridge.exposeInMainWorld('api', {
   // Modelos de Documentos (Facturas, Recibos, Notas de Venta)
   getModelosDocumentos: (tipo) => ipcRenderer.invoke('db:get-modelos-documentos', tipo),
   saveModeloDocumento: (modelo) => ipcRenderer.invoke('db:save-modelo-documento', modelo),
-  deleteModeloDocumento: (id) => ipcRenderer.invoke('db:delete-modelo-documento', id),
-  setPredeterminadoModelo: (id, tipo) => ipcRenderer.invoke('db:set-predeterminado-modelo', { id, tipo }),
-  processInvoiceTemplate: (params) => ipcRenderer.invoke('app:process-invoice-template', params)
+  deleteModeloDocumento: (id) => ipcRenderer.invoke('db:delete-modelo-documento', id)
 });

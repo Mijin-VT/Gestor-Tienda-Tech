@@ -2175,6 +2175,114 @@ ipcMain.handle('db:toggle-nota-fijada', async (event, id) => {
   }
 });
 
+// ============================================================================
+// MODELOS Y PLANTILLAS DE DOCUMENTOS (FACTURAS, RECIBOS, NOTAS DE VENTA)
+// ============================================================================
+
+async function ensureModelosDocumentosTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS modelos_documentos (
+      id SERIAL PRIMARY KEY,
+      titulo VARCHAR(200),
+      nombre VARCHAR(200),
+      tipo VARCHAR(50) NOT NULL DEFAULT 'Factura',
+      descripcion TEXT,
+      imagen_data TEXT,
+      archivo_data TEXT,
+      formato VARCHAR(20),
+      archivo_tipo VARCHAR(50),
+      fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  try {
+    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS titulo VARCHAR(200);`);
+    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS imagen_data TEXT;`);
+    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS formato VARCHAR(20);`);
+    await db.query(`ALTER TABLE modelos_documentos ADD COLUMN IF NOT EXISTS fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP;`);
+    await db.query(`ALTER TABLE modelos_documentos ALTER COLUMN nombre DROP NOT NULL;`);
+    await db.query(`ALTER TABLE modelos_documentos ALTER COLUMN archivo_data DROP NOT NULL;`);
+  } catch (e) {}
+}
+
+ipcMain.handle('db:get-modelos-documentos', async (event, tipo) => {
+  try {
+    await ensureModelosDocumentosTable();
+    let sql = 'SELECT id, COALESCE(titulo, nombre, \'Modelo\') AS titulo, tipo, descripcion, COALESCE(imagen_data, archivo_data) AS imagen_data, COALESCE(formato, archivo_tipo, \'IMG\') AS formato, COALESCE(fecha_creacion, CURRENT_TIMESTAMP) AS fecha_creacion FROM modelos_documentos';
+    const params = {};
+    if (tipo && tipo !== 'Todos') {
+      sql += ' WHERE tipo = @tipo';
+      params.tipo = tipo;
+    }
+    sql += ' ORDER BY id DESC';
+    const result = await db.query(sql, params);
+    return { success: true, recordset: result.recordset || [] };
+  } catch (err) {
+    console.error('Error al obtener modelos de documentos:', err);
+    return { success: false, recordset: [], message: err.message };
+  }
+});
+
+ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
+  try {
+    await ensureModelosDocumentosTable();
+    const tituloVal = modelo.titulo || 'Modelo de Documento';
+    const imgVal = modelo.imagen_data || '';
+    const fmtVal = modelo.formato || 'IMG';
+
+    if (modelo.id) {
+      await db.query(`
+        UPDATE modelos_documentos
+        SET titulo = @titulo, nombre = @nombre, tipo = @tipo, descripcion = @descripcion,
+            imagen_data = @imagen_data, archivo_data = @archivo_data,
+            formato = @formato, archivo_tipo = @archivo_tipo
+        WHERE id = @id
+      `, {
+        titulo: tituloVal,
+        nombre: tituloVal,
+        tipo: modelo.tipo || 'Factura',
+        descripcion: modelo.descripcion || '',
+        imagen_data: imgVal,
+        archivo_data: imgVal,
+        formato: fmtVal,
+        archivo_tipo: fmtVal,
+        id: parseInt(modelo.id, 10)
+      });
+      return { success: true, id: parseInt(modelo.id, 10) };
+    } else {
+      const result = await db.query(`
+        INSERT INTO modelos_documentos (titulo, nombre, tipo, descripcion, imagen_data, archivo_data, formato, archivo_tipo)
+        VALUES (@titulo, @nombre, @tipo, @descripcion, @imagen_data, @archivo_data, @formato, @archivo_tipo)
+        RETURNING id
+      `, {
+        titulo: tituloVal,
+        nombre: tituloVal,
+        tipo: modelo.tipo || 'Factura',
+        descripcion: modelo.descripcion || '',
+        imagen_data: imgVal,
+        archivo_data: imgVal,
+        formato: fmtVal,
+        archivo_tipo: fmtVal
+      });
+      const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;
+      return { success: true, id: newId };
+    }
+  } catch (err) {
+    console.error('Error al guardar modelo de documento:', err);
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('db:delete-modelo-documento', async (event, id) => {
+  try {
+    await ensureModelosDocumentosTable();
+    await db.query('DELETE FROM modelos_documentos WHERE id = @id', { id: parseInt(id, 10) });
+    return { success: true };
+  } catch (err) {
+    console.error('Error al eliminar modelo de documento:', err);
+    return { success: false, message: err.message };
+  }
+});
+
 // 30. Abrir Archivo Local
 ipcMain.handle('app:open-file', async (event, filePath) => {
   try {
@@ -2190,230 +2298,5 @@ ipcMain.handle('app:open-file', async (event, filePath) => {
     return { success: true };
   } catch(e) {
     return { success: false, message: e.message };
-  }
-});
-
-// ============================================================================
-// MODELOS DE DOCUMENTOS (FACTURAS, RECIBOS, NOTAS DE VENTA)
-// ============================================================================
-
-async function ensureModelosDocumentosTable() {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS modelos_documentos (
-      id SERIAL PRIMARY KEY,
-      nombre VARCHAR(150) NOT NULL,
-      tipo VARCHAR(50) NOT NULL,
-      descripcion TEXT,
-      archivo_nombre VARCHAR(255),
-      archivo_tipo VARCHAR(50),
-      archivo_data TEXT NOT NULL,
-      es_predeterminado BOOLEAN DEFAULT FALSE,
-      fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
-
-ipcMain.handle('db:get-modelos-documentos', async (event, tipo) => {
-  try {
-    await ensureModelosDocumentosTable();
-    let queryStr = 'SELECT id, nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, COALESCE(es_predeterminado, FALSE) AS es_predeterminado, fecha_subida FROM modelos_documentos';
-    const params = {};
-    if (tipo && tipo !== 'Todos') {
-      queryStr += ' WHERE tipo = @tipo';
-      params.tipo = tipo;
-    }
-    queryStr += ' ORDER BY es_predeterminado DESC, fecha_subida DESC';
-    const result = await db.query(queryStr, params);
-    return { success: true, recordset: result.recordset || [] };
-  } catch (err) {
-    console.error('Error al obtener modelos de documentos:', err);
-    return { success: false, message: err.message, recordset: [] };
-  }
-});
-
-ipcMain.handle('db:save-modelo-documento', async (event, modelo) => {
-  try {
-    await ensureModelosDocumentosTable();
-    const esPred = modelo.es_predeterminado === true || modelo.es_predeterminado === 'true' || modelo.es_predeterminado === 1;
-    const docTipo = modelo.tipo || 'Factura';
-
-    if (esPred) {
-      await db.query('UPDATE modelos_documentos SET es_predeterminado = FALSE WHERE tipo = @tipo', { tipo: docTipo });
-    }
-
-    if (modelo.id) {
-      await db.query(`
-        UPDATE modelos_documentos
-        SET nombre = @nombre, tipo = @tipo, descripcion = @descripcion,
-            archivo_nombre = COALESCE(@archivo_nombre, archivo_nombre),
-            archivo_tipo = COALESCE(@archivo_tipo, archivo_tipo),
-            archivo_data = COALESCE(@archivo_data, archivo_data),
-            es_predeterminado = @es_predeterminado
-        WHERE id = @id
-      `, {
-        nombre: modelo.nombre || 'Modelo sin título',
-        tipo: docTipo,
-        descripcion: modelo.descripcion || '',
-        archivo_nombre: modelo.archivo_nombre || null,
-        archivo_tipo: modelo.archivo_tipo || null,
-        archivo_data: modelo.archivo_data || null,
-        es_predeterminado: esPred,
-        id: parseInt(modelo.id, 10)
-      });
-      return { success: true, id: parseInt(modelo.id, 10) };
-    } else {
-      const result = await db.query(`
-        INSERT INTO modelos_documentos (nombre, tipo, descripcion, archivo_nombre, archivo_tipo, archivo_data, es_predeterminado)
-        VALUES (@nombre, @tipo, @descripcion, @archivo_nombre, @archivo_tipo, @archivo_data, @es_predeterminado)
-        RETURNING id
-      `, {
-        nombre: modelo.nombre || 'Modelo sin título',
-        tipo: docTipo,
-        descripcion: modelo.descripcion || '',
-        archivo_nombre: modelo.archivo_nombre || 'documento.png',
-        archivo_tipo: modelo.archivo_tipo || 'image/png',
-        archivo_data: modelo.archivo_data,
-        es_predeterminado: esPred
-      });
-      const newId = result.recordset && result.recordset[0] ? result.recordset[0].id : null;
-      return { success: true, id: newId };
-    }
-  } catch (err) {
-    console.error('Error al guardar modelo de documento:', err);
-    return { success: false, message: err.message };
-  }
-});
-
-ipcMain.handle('db:delete-modelo-documento', async (event, id) => {
-  try {
-    await db.query(`DELETE FROM modelos_documentos WHERE id = @id`, { id: parseInt(id, 10) });
-    return { success: true };
-  } catch (err) {
-    console.error('Error al eliminar modelo de documento:', err);
-    return { success: false, message: err.message };
-  }
-});
-
-ipcMain.handle('db:set-predeterminado-modelo', async (event, { id, tipo }) => {
-  try {
-    await ensureModelosDocumentosTable();
-    await db.query('UPDATE modelos_documentos SET es_predeterminado = FALSE WHERE tipo = @tipo', { tipo });
-    await db.query('UPDATE modelos_documentos SET es_predeterminado = TRUE WHERE id = @id', { id: parseInt(id, 10) });
-    return { success: true };
-  } catch (err) {
-    console.error('Error al establecer modelo predeterminado:', err);
-    return { success: false, message: err.message };
-  }
-});
-
-// ============================================================================
-// PROCESAMIENTO DE FACTURAS CON OPENCV + NUMPY + PILLOW
-// ============================================================================
-
-ipcMain.handle('app:process-invoice-template', async (event, params = {}) => {
-  const { invoiceData = {}, templateId = null, format = 'PNG', autoDeskew = true, autoPerspective = false } = params;
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const { spawn } = require('child_process');
-
-    let templateSource = null;
-    if (templateId) {
-      const res = await db.query('SELECT archivo_data FROM modelos_documentos WHERE id = @id', { id: parseInt(templateId, 10) });
-      if (res.recordset && res.recordset.length > 0) {
-        templateSource = res.recordset[0].archivo_data;
-      }
-    }
-
-    if (!templateSource) {
-      const tipo = invoiceData.tipo_documento || 'Factura';
-      const res = await db.query('SELECT archivo_data FROM modelos_documentos WHERE tipo = @tipo AND es_predeterminado = TRUE LIMIT 1', { tipo });
-      if (res.recordset && res.recordset.length > 0) {
-        templateSource = res.recordset[0].archivo_data;
-      }
-    }
-
-    if (!templateSource) {
-      const res = await db.query('SELECT archivo_data FROM modelos_documentos ORDER BY fecha_subida DESC LIMIT 1');
-      if (res.recordset && res.recordset.length > 0) {
-        templateSource = res.recordset[0].archivo_data;
-      }
-    }
-
-    const tempDir = path.join(app.getPath('temp'), 'gestor_tienda_tech');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    const dataPath = path.join(tempDir, `invoice_data_${Date.now()}.json`);
-    fs.writeFileSync(dataPath, JSON.stringify(invoiceData, null, 2), 'utf-8');
-
-    let templatePath = null;
-    if (templateSource && templateSource.startsWith('data:image')) {
-      const matches = templateSource.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
-      if (matches) {
-        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-        const buffer = Buffer.from(matches[2], 'base64');
-        templatePath = path.join(tempDir, `template_${Date.now()}.${ext}`);
-        fs.writeFileSync(templatePath, buffer);
-      }
-    }
-
-    if (!templatePath) {
-      templatePath = 'BLANK';
-    }
-
-    const scriptPath = path.join(__dirname, 'invoice_processor.py');
-    const outFileName = `factura_${(invoiceData.numero_factura || 'doc').replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${format.toLowerCase()}`;
-    const outDir = path.join(__dirname, 'FACTURAS');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-    const outputPath = path.join(outDir, outFileName);
-
-    const args = [
-      scriptPath,
-      '--template', templatePath,
-      '--data', dataPath,
-      '--output', outputPath,
-      '--format', format
-    ];
-
-    if (autoDeskew) args.push('--deskew');
-    if (autoPerspective) args.push('--perspective');
-
-    return new Promise((resolve) => {
-      const pyProcess = spawn('python', args, { cwd: __dirname });
-
-      let stdoutData = '';
-      let stderrData = '';
-
-      pyProcess.stdout.on('data', (data) => {
-        stdoutData += data.toString();
-      });
-
-      pyProcess.stderr.on('data', (data) => {
-        stderrData += data.toString();
-      });
-
-      pyProcess.on('close', (code) => {
-        try {
-          if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
-          if (templatePath && templatePath !== 'BLANK' && fs.existsSync(templatePath)) fs.unlinkSync(templatePath);
-        } catch (e) {}
-
-        if (code === 0) {
-          try {
-            const parsed = JSON.parse(stdoutData.trim());
-            resolve({ success: true, ...parsed, outputPath });
-          } catch (e) {
-            resolve({ success: true, outputPath, rawOutput: stdoutData });
-          }
-        } else {
-          console.error('Error en invoice_processor.py:', stderrData || stdoutData);
-          resolve({ success: false, message: stderrData || 'Error en el motor de visión y renderizado.' });
-        }
-      });
-    });
-
-  } catch (err) {
-    console.error('Error al procesar factura con OpenCV + Pillow:', err);
-    return { success: false, message: err.message };
   }
 });

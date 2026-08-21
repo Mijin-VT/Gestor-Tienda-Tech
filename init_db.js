@@ -311,14 +311,12 @@ async function initializeTablesAndSeed(config) {
 
       CREATE TABLE IF NOT EXISTS modelos_documentos (
         id SERIAL PRIMARY KEY,
-        nombre VARCHAR(150) NOT NULL,
+        titulo VARCHAR(200) NOT NULL,
         tipo VARCHAR(50) NOT NULL,
         descripcion TEXT,
-        archivo_nombre VARCHAR(255),
-        archivo_tipo VARCHAR(50),
-        archivo_data TEXT NOT NULL,
-        es_predeterminado BOOLEAN DEFAULT FALSE,
-        fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        imagen_data TEXT NOT NULL,
+        formato VARCHAR(20),
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 

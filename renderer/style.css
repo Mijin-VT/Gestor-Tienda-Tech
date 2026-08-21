@@ -1344,245 +1344,102 @@ body {
 }
 
 /* ==========================================================================
-   MÓDULO MODELOS DE DOCUMENTOS (Facturas, Recibos, Notas de Venta)
+   MÓDULO DE MODELOS DE DOCUMENTOS (FACTURAS, RECIBOS, NOTAS DE VENTA)
    ========================================================================== */
 
-.models-modal-card {
-  background: var(--bg-secondary);
+.model-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--card-border);
-  border-radius: 18px;
-  width: 900px;
-  max-width: 95vw;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.65);
-  overflow: hidden;
-}
-
-.models-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 25px;
-  border-bottom: 1px solid var(--card-border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.models-modal-body {
-  padding: 20px 25px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.models-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.models-tabs {
-  display: flex;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.25);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--card-border);
-}
-
-.models-tab-btn {
-  background: transparent;
-  border: none;
   color: var(--text-muted);
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.models-tab-btn:hover {
+.model-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.models-tab-btn.active {
+.model-filter-btn.active {
   background: var(--primary);
   color: #fff;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
-}
-
-.models-upload-panel {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 25px;
-  transition: all 0.3s ease;
-}
-
-.model-dropzone {
-  border: 2px dashed rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  padding: 25px 20px;
-  text-align: center;
-  cursor: pointer;
-  background: rgba(0, 0, 0, 0.15);
-  transition: all 0.25s ease;
-  position: relative;
-}
-
-.model-dropzone:hover,
-.model-dropzone.dragover {
   border-color: var(--primary);
-  background: rgba(37, 99, 235, 0.08);
-}
-
-.model-dropzone-icon {
-  font-size: 2.2rem;
-  color: var(--primary);
-  margin-bottom: 8px;
-}
-
-.model-preview-box {
-  max-width: 180px;
-  max-height: 180px;
-  margin: 10px auto;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--card-border);
-  display: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.model-preview-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #111;
-}
-
-.models-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .model-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-secondary);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   position: relative;
 }
 
 .model-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.45);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
-.model-card.is-default {
-  border-color: rgba(16, 185, 129, 0.5);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
-}
-
-.model-thumb-container {
-  height: 160px;
+.model-card-thumb-wrapper {
+  position: relative;
   width: 100%;
-  background: #0f172a;
+  height: 160px;
+  background: #0b1120;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  position: relative;
+  border-bottom: 1px solid var(--card-border);
   cursor: pointer;
 }
 
-.model-thumb-container img {
-  width: 100%;
-  height: 100%;
+.model-card-thumb {
+  max-width: 90%;
+  max-height: 90%;
   object-fit: contain;
-  padding: 8px;
   transition: transform 0.3s ease;
 }
 
-.model-card:hover .model-thumb-container img {
+.model-card:hover .model-card-thumb {
   transform: scale(1.04);
 }
 
-.model-thumb-overlay {
+.model-card-overlay-btn {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s;
-  color: #fff;
-  font-size: 1.5rem;
+  transition: opacity 0.2s ease;
 }
 
-.model-thumb-container:hover .model-thumb-overlay {
+.model-card:hover .model-card-overlay-btn {
   opacity: 1;
 }
 
-.model-badge-type {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-}
-
-.model-badge-type.factura {
-  background: #2563eb;
+.model-card-overlay-btn span {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
   color: #fff;
-}
-
-.model-badge-type.recibo {
-  background: #10b981;
-  color: #fff;
-}
-
-.model-badge-type.nota-de-venta {
-  background: #8b5cf6;
-  color: #fff;
-}
-
-.model-badge-type.otro {
-  background: #f59e0b;
-  color: #fff;
-}
-
-.model-badge-default {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(16, 185, 129, 0.9);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .model-card-body {
@@ -1592,39 +1449,84 @@ body {
   flex-direction: column;
 }
 
+.model-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
 .model-card-title {
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.88rem;
+  font-weight: 700;
   color: var(--text-main);
-  margin-bottom: 4px;
-  white-space: nowrap;
+  line-height: 1.3;
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.model-badge.factura {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.model-badge.recibo {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.model-badge.nota-de-venta {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.model-badge.otro {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 .model-card-desc {
   font-size: 0.78rem;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  line-height: 1.4;
+  margin-bottom: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.3;
+  flex: 1;
 }
 
 .model-card-footer {
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+  margin-top: auto;
 }
 
-.model-card-date {
-  font-size: 0.75rem;
+.model-card-format {
+  font-size: 0.72rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 .model-card-actions {
@@ -1632,8 +1534,8 @@ body {
   gap: 6px;
 }
 
-.model-action-btn {
-  background: rgba(255, 255, 255, 0.05);
+.model-card-btn {
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--card-border);
   color: var(--text-muted);
   width: 28px;
@@ -1642,58 +1544,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.78rem;
   cursor: pointer;
-  font-size: 0.8rem;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
 }
 
-.model-action-btn:hover {
+.model-card-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.model-action-btn.star:hover,
-.model-action-btn.star.active {
-  color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.4);
-  background: rgba(251, 191, 36, 0.1);
-}
-
-.model-action-btn.delete:hover {
+.model-card-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
   color: #f87171;
-  border-color: rgba(248, 113, 113, 0.4);
-  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
-/* Lightbox Modal */
-.lightbox-modal-card {
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid var(--card-border);
-  border-radius: 16px;
-  max-width: 90vw;
-  max-height: 92vh;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.85);
-}
-
-.lightbox-img-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  padding: 10px;
-  max-height: 75vh;
-}
-
-.lightbox-img-wrapper img {
-  max-width: 100%;
-  max-height: 72vh;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+.model-dropzone-box.drag-over {
+  border-color: var(--primary) !important;
+  background: rgba(59, 130, 246, 0.1) !important;
 }
 
 

@@ -1893,7 +1893,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td style="text-align: right;">
               <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                <button class="action-btn" onclick="previewInvoiceWithVision(${f.id})" title="Ver Factura con Modelo (OpenCV + Pillow)" style="color: #a78bfa; border-color: rgba(167, 139, 250, 0.4); background: rgba(167, 139, 250, 0.12);"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                 <button class="action-btn action-view" onclick="previewInvoice(${f.id})" title="Ver / Imprimir en Impresora o PDF"><i class="fa-solid fa-print"></i></button>
                 <button class="action-btn action-email" onclick="sendInvoiceEmail(${f.id})" title="Enviar Factura por Email" style="color: #10b981; border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);"><i class="fa-solid fa-envelope"></i></button>
                 <button class="action-btn action-delete" onclick="deleteInvoice(${f.id})" title="Eliminar Factura"><i class="fa-solid fa-trash-can"></i></button>
@@ -1908,14 +1907,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   window.renderInvoices = renderInvoices;
-
-  window.previewInvoiceWithVision = function(id) {
-    window.previewInvoice(id);
-    setTimeout(() => {
-      const btnVision = document.getElementById('btn-view-mode-vision');
-      if (btnVision) btnVision.click();
-    }, 150);
-  };
 
   window.deleteInvoice = function(id) {
     showConfirm('¿Eliminar Factura?', 'Esta acción eliminará la factura y todos sus detalles de la base de datos de manera irreversible.', async () => {
@@ -2071,167 +2062,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(res.message, 'error');
         return;
       }
-
-      const invoice = res.invoice;
-      const items = res.items || [];
-      const config = res.config || {};
-
-      const numBadge = document.getElementById('invoice-print-num-badge');
-      if (numBadge) numBadge.textContent = invoice.numero_factura || `ID #${invoice.id}`;
-
-      // 1. Render HTML Estándar
-      const html = buildInvoiceHtml(invoice, items, config);
-      const containerHtml = document.getElementById('invoice-preview-container');
-      const containerVision = document.getElementById('invoice-vision-container');
-      const visionImg = document.getElementById('invoice-vision-img');
-      const visionLoading = document.getElementById('invoice-vision-loading');
-      const visionNote = document.getElementById('vision-status-note');
-      const btnDownloadImg = document.getElementById('btn-download-image');
-      const btnViewHtml = document.getElementById('btn-view-mode-html');
-      const btnViewVision = document.getElementById('btn-view-mode-vision');
-
-      if (containerHtml) {
-        containerHtml.innerHTML = html;
-        containerHtml.style.display = 'block';
+      const html = buildInvoiceHtml(res.invoice, res.items || [], res.config || {});
+      const container = document.getElementById('invoice-preview-container');
+      if (container) {
+        container.innerHTML = html;
       }
-      if (containerVision) containerVision.style.display = 'none';
-      if (btnViewHtml) btnViewHtml.classList.add('active');
-      if (btnViewVision) btnViewVision.classList.remove('active');
-      if (btnDownloadImg) btnDownloadImg.style.display = 'none';
-
-      // 2. Cargar lista de plantillas disponibles en el selector
-      const templateSelect = document.getElementById('invoice-template-select');
-      if (templateSelect) {
-        templateSelect.innerHTML = '<option value="">-- Modelo Predeterminado --</option>';
-        try {
-          const modRes = await window.api.getModelosDocumentos();
-          if (modRes && modRes.success && modRes.recordset) {
-            modRes.recordset.forEach(m => {
-              const opt = document.createElement('option');
-              opt.value = m.id;
-              opt.textContent = `${m.nombre} (${m.tipo})${m.es_predeterminado ? ' ★' : ''}`;
-              if (m.es_predeterminado) opt.selected = true;
-              templateSelect.appendChild(opt);
-            });
-          }
-        } catch(e) { console.error('Error cargando modelos:', e); }
-      }
-
-      // 3. Función para renderizar con OpenCV + Pillow
-      let processedImageB64 = null;
-      let processedImagePath = null;
-
-      const renderVisionInvoice = async () => {
-        if (!containerVision || !visionImg) return;
-        
-        containerHtml.style.display = 'none';
-        containerVision.style.display = 'block';
-        if (btnViewHtml) btnViewHtml.classList.remove('active');
-        if (btnViewVision) btnViewVision.classList.add('active');
-
-        if (visionLoading) visionLoading.style.display = 'block';
-        visionImg.style.display = 'none';
-
-        try {
-          const selectedTemplateId = templateSelect ? templateSelect.value : null;
-
-          const invoicePayload = {
-            empresa_nombre: config.company_name || 'GESTOR TIENDA TECH',
-            empresa_ruc: config.company_ruc || '1799999999001',
-            empresa_direccion: config.company_address || 'Av. Principal #123 y Central',
-            empresa_telefono: config.company_phone || '+593 99 999 9999',
-            tipo_documento: invoice.tipo_documento || 'FACTURA DE VENTA',
-            numero_factura: invoice.numero_factura || '001-001-00000001',
-            fecha: invoice.fecha_emision ? new Date(invoice.fecha_emision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            clave_acceso_sri: invoice.clave_acceso || '',
-            cliente_nombre: invoice.cliente_nombre || 'CONSUMIDOR FINAL',
-            cliente_documento: invoice.cliente_documento || '9999999999',
-            cliente_telefono: invoice.cliente_telefono || '',
-            cliente_correo: invoice.cliente_correo || '',
-            cliente_direccion: invoice.cliente_direccion || 'Quito, Ecuador',
-            metodo_pago: invoice.metodo_pago || 'Efectivo',
-            subtotal: parseFloat(invoice.subtotal || 0),
-            abono: parseFloat(invoice.abono || 0),
-            impuesto: parseFloat(invoice.impuesto || 0),
-            total: parseFloat(invoice.total || 0),
-            items: items.map(it => ({
-              cantidad: it.cantidad || 1,
-              descripcion: it.descripcion || it.nombre || 'Ítem',
-              precio_unitario: parseFloat(it.precio_unitario || it.precio || 0),
-              subtotal: parseFloat(it.subtotal || 0)
-            }))
-          };
-
-          const pyRes = await window.api.processInvoiceTemplate({
-            invoiceData: invoicePayload,
-            templateId: selectedTemplateId || null,
-            format: 'PNG',
-            autoDeskew: true,
-            autoPerspective: false
-          });
-
-          if (visionLoading) visionLoading.style.display = 'none';
-
-          if (pyRes && pyRes.success && pyRes.base64) {
-            processedImageB64 = pyRes.base64;
-            processedImagePath = pyRes.output_path || null;
-            visionImg.src = pyRes.base64;
-            visionImg.style.display = 'inline-block';
-            if (btnDownloadImg) btnDownloadImg.style.display = 'inline-flex';
-            if (visionNote) visionNote.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Renderizado HD completado (${pyRes.width || 800}x${pyRes.height || 1100} px)`;
-            showToast('¡Factura procesada con OpenCV + Pillow con éxito!', 'success');
-          } else {
-            if (visionNote) visionNote.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #f87171;"></i> ${pyRes ? pyRes.message : 'Error en motor Python'}`;
-            showToast(pyRes ? pyRes.message : 'Error al procesar con visión computacional.', 'error');
-          }
-        } catch(e) {
-          if (visionLoading) visionLoading.style.display = 'none';
-          console.error(e);
-          showToast('Error al ejecutar motor de procesamiento.', 'error');
-        }
-      };
-
-      const btnRenderVision = document.getElementById('btn-render-vision');
-      if (btnRenderVision) {
-        btnRenderVision.onclick = renderVisionInvoice;
-      }
-
-      if (btnViewHtml) {
-        btnViewHtml.onclick = () => {
-          if (containerHtml) containerHtml.style.display = 'block';
-          if (containerVision) containerVision.style.display = 'none';
-          btnViewHtml.classList.add('active');
-          if (btnViewVision) btnViewVision.classList.remove('active');
-          if (btnDownloadImg) btnDownloadImg.style.display = 'none';
-        };
-      }
-
-      if (btnViewVision) {
-        btnViewVision.onclick = () => {
-          if (!processedImageB64) {
-            renderVisionInvoice();
-          } else {
-            if (containerHtml) containerHtml.style.display = 'none';
-            if (containerVision) containerVision.style.display = 'block';
-            btnViewVision.classList.add('active');
-            if (btnViewHtml) btnViewHtml.classList.remove('active');
-            if (btnDownloadImg) btnDownloadImg.style.display = 'inline-flex';
-          }
-        };
-      }
-
-      if (btnDownloadImg) {
-        btnDownloadImg.onclick = () => {
-          if (processedImageB64) {
-            const a = document.createElement('a');
-            a.href = processedImageB64;
-            a.download = `Factura_${invoice.numero_factura || invoice.id}_HD.png`;
-            a.click();
-            showToast('Imagen guardada exitosamente.', 'success');
-          }
-        };
-      }
-
       const modal = document.getElementById('invoice-print-modal');
       if (modal) {
         modal.style.display = 'flex';
@@ -2254,7 +2089,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnPdf) {
         btnPdf.onclick = async () => {
           showToast('Seleccionando ruta de guardado PDF...', 'info');
-          const pdfRes = await window.api.printInvoicePdf(html, invoice.numero_factura);
+          const pdfRes = await window.api.printInvoicePdf(html, res.invoice.numero_factura);
           if (pdfRes && pdfRes.success) {
             showToast(pdfRes.message, 'success');
           } else {
@@ -2355,24 +2190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
           showToast('Error al cargar órdenes de reparación.', 'error');
         }
-      }
-
-      // Cargar modelos de comprobante en checkout
-      const checkoutModelSelect = document.getElementById('invoice-model-select-checkout');
-      if (checkoutModelSelect) {
-        checkoutModelSelect.innerHTML = '<option value="">Plantilla Estándar Oficial</option>';
-        try {
-          const modRes = await window.api.getModelosDocumentos();
-          if (modRes && modRes.success && modRes.recordset) {
-            modRes.recordset.forEach(m => {
-              const opt = document.createElement('option');
-              opt.value = m.id;
-              opt.textContent = `${m.nombre} (${m.tipo})${m.es_predeterminado ? ' ★' : ''}`;
-              if (m.es_predeterminado) opt.selected = true;
-              checkoutModelSelect.appendChild(opt);
-            });
-          }
-        } catch(e) {}
       }
       
       if (window.updateInvoiceCartUI) window.updateInvoiceCartUI();
@@ -4379,78 +4196,76 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 // ============================================================================
-// MÓDULO DE MODELOS DE DOCUMENTOS (Facturas, Recibos, Notas de Venta)
+// MÓDULO DE MODELOS Y PLANTILLAS DE FACTURAS, RECIBOS Y NOTAS DE VENTA
 // ============================================================================
 
 (function () {
   let allModels = [];
-  let currentTab = 'Todos';
-  let selectedFileBase64 = null;
-  let selectedFileName = '';
-  let selectedFileType = '';
+  let currentModelFilter = 'Todos';
+  let selectedImageData = '';
+  let selectedImageFormat = '';
 
-  const modelsModal       = document.getElementById('invoice-models-modal');
-  const modelsGrid        = document.getElementById('models-grid');
-  const modelsEmpty       = document.getElementById('models-empty-state');
+  const modelsModal = document.getElementById('models-modal');
+  const closeModelsModalBtn = document.getElementById('close-models-modal-btn');
+  const footerCloseModelsBtn = document.getElementById('footer-close-models-btn');
+  const openUploadModelBtn = document.getElementById('open-upload-model-btn');
+  const emptyUploadModelBtn = document.getElementById('empty-upload-model-btn');
   const modelsSearchInput = document.getElementById('models-search-input');
-  const toggleUploadBtn   = document.getElementById('toggle-upload-model-btn');
-  const uploadPanel       = document.getElementById('models-upload-panel');
-  const closeUploadBtn    = document.getElementById('close-upload-panel-btn');
-  const cancelUploadBtn   = document.getElementById('cancel-upload-btn');
-  const modelForm         = document.getElementById('model-upload-form');
-  const modelFormTitle    = document.getElementById('model-form-title');
-  const modelEditId       = document.getElementById('model-edit-id');
-  const modelDropzone     = document.getElementById('model-dropzone');
-  const modelFileInput    = document.getElementById('model-file-input');
-  const dropzonePrompt    = document.getElementById('dropzone-prompt');
-  const previewBox        = document.getElementById('model-preview-box');
-  const previewImg        = document.getElementById('model-preview-img');
-  const fileInfoEl        = document.getElementById('model-file-info');
-  const modelNameInput    = document.getElementById('model-name-input');
-  const modelTypeSelect   = document.getElementById('model-type-select');
-  const modelDescInput    = document.getElementById('model-desc-input');
-  const modelIsDefault    = document.getElementById('model-is-default-check');
+  const modelsGrid = document.getElementById('models-grid');
+  const modelsEmptyState = document.getElementById('models-empty-state');
+  const modelsCounterText = document.getElementById('models-counter-text');
+  const filterBtns = document.querySelectorAll('.model-filter-btn');
 
-  // Lightbox
-  const lightboxModal     = document.getElementById('model-lightbox-modal');
-  const lightboxImg       = document.getElementById('lightbox-img');
-  const lightboxTitle     = document.getElementById('lightbox-title');
-  const lightboxBadge     = document.getElementById('lightbox-badge-type');
-  const lightboxDesc      = document.getElementById('lightbox-desc');
-  const lightboxDate      = document.getElementById('lightbox-date');
-  const lightboxDownload  = document.getElementById('lightbox-download-btn');
+  // Subir / Editar Modal
+  const uploadModelModal = document.getElementById('upload-model-modal');
+  const uploadModelModalTitle = document.getElementById('upload-model-modal-title');
+  const uploadModelForm = document.getElementById('upload-model-form');
+  const modelEditId = document.getElementById('model-edit-id');
+  const modelTitleInput = document.getElementById('model-title-input');
+  const modelTypeSelect = document.getElementById('model-type-select');
+  const modelDescInput = document.getElementById('model-desc-input');
+  const modelFileInput = document.getElementById('model-file-input');
+  const modelDropzone = document.getElementById('model-dropzone');
+  const modelDropzonePrompt = document.getElementById('model-dropzone-prompt');
+  const modelImagePreviewWrapper = document.getElementById('model-image-preview-wrapper');
+  const modelImagePreview = document.getElementById('model-image-preview');
+  const modelFileInfoBadge = document.getElementById('model-file-info-badge');
+  const modelRemoveFileBtn = document.getElementById('model-remove-file-btn');
+  const closeUploadModelModalBtn = document.getElementById('close-upload-model-modal-btn');
+  const cancelUploadModelBtn = document.getElementById('cancel-upload-model-btn');
 
-  const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+  // Lightbox Modal
+  const lightboxModal = document.getElementById('image-lightbox-modal');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxCaption = document.getElementById('lightbox-caption');
+  const lightboxDownloadLink = document.getElementById('lightbox-download-link');
+  const closeLightboxBtn = document.getElementById('close-lightbox-btn');
 
-  function formatModelDate(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
+  // ── Funciones Principales ──────────────────────────────────────────────────
 
-  function getBadgeClass(tipo) {
-    if (!tipo) return 'otro';
-    const t = tipo.toLowerCase().trim();
-    if (t.includes('factura')) return 'factura';
-    if (t.includes('recibo')) return 'recibo';
-    if (t.includes('nota')) return 'nota-de-venta';
-    return 'otro';
-  }
-
-  // ── Abrir y Cerrar Modal Principal ──────────────────────────────────────────
   window.openInvoiceModelsModal = async function () {
-    if (modelsModal) {
-      modelsModal.style.display = 'flex';
-      hideUploadPanel();
-      await loadAndRenderModels();
-    }
+    if (!modelsModal) return;
+    modelsModal.style.display = 'flex';
+    if (modelsSearchInput) modelsSearchInput.value = '';
+    currentModelFilter = 'Todos';
+    filterBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filter === 'Todos');
+    });
+    await loadAndRenderModels();
   };
 
-  // ── Cargar modelos de base de datos ─────────────────────────────────────────
+  function closeInvoiceModelsModal() {
+    if (modelsModal) modelsModal.style.display = 'none';
+  }
+
   async function loadAndRenderModels() {
     try {
-      const res = await window.api.getModelosDocumentos();
-      allModels = (res && res.success && res.recordset) ? res.recordset : [];
+      const res = await window.api.getModelosDocumentos(currentModelFilter);
+      if (res && res.success) {
+        allModels = res.recordset || [];
+      } else {
+        allModels = [];
+      }
     } catch (e) {
       console.error('Error al cargar modelos:', e);
       allModels = [];
@@ -4458,65 +4273,67 @@ document.addEventListener('DOMContentLoaded', () => {
     renderModelsGrid();
   }
 
-  // ── Renderizado de la cuadrícula ──────────────────────────────────────────
   function renderModelsGrid() {
     if (!modelsGrid) return;
     const searchTerm = modelsSearchInput ? modelsSearchInput.value.trim().toLowerCase() : '';
-
+    
     let filtered = allModels;
-
-    // Filtro por pestaña
-    if (currentTab !== 'Todos') {
-      filtered = filtered.filter(m => (m.tipo || '').toLowerCase() === currentTab.toLowerCase());
+    if (currentModelFilter && currentModelFilter !== 'Todos') {
+      filtered = filtered.filter(m => m.tipo === currentModelFilter);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(m => 
+        (m.titulo || '').toLowerCase().includes(searchTerm) ||
+        (m.descripcion || '').toLowerCase().includes(searchTerm) ||
+        (m.tipo || '').toLowerCase().includes(searchTerm) ||
+        (m.formato || '').toLowerCase().includes(searchTerm)
+      );
     }
 
-    // Filtro por búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(m =>
-        (m.nombre || '').toLowerCase().includes(searchTerm) ||
-        (m.descripcion || '').toLowerCase().includes(searchTerm) ||
-        (m.tipo || '').toLowerCase().includes(searchTerm)
-      );
+    if (modelsCounterText) {
+      modelsCounterText.textContent = `${filtered.length} ${filtered.length === 1 ? 'modelo registrado' : 'modelos registrados'}`;
     }
 
     modelsGrid.innerHTML = '';
 
     if (filtered.length === 0) {
-      if (modelsEmpty) modelsEmpty.style.display = 'block';
+      if (modelsEmptyState) modelsEmptyState.style.display = 'flex';
       return;
     }
-    if (modelsEmpty) modelsEmpty.style.display = 'none';
+    if (modelsEmptyState) modelsEmptyState.style.display = 'none';
 
-    filtered.forEach(model => {
+    filtered.forEach(modelo => {
       const card = document.createElement('div');
-      card.className = `model-card${model.es_predeterminado ? ' is-default' : ''}`;
-      card.dataset.id = model.id;
+      card.className = 'model-card';
 
-      const badgeClass = getBadgeClass(model.tipo);
-      const isDefaultBadge = model.es_predeterminado
-        ? `<div class="model-badge-default"><i class="fa-solid fa-star"></i> Predeterminado</div>`
-        : '';
+      const typeSlug = (modelo.tipo || 'otro').toLowerCase().replace(/\s+/g, '-');
+      const formatoText = (modelo.formato || 'IMG').toUpperCase();
+      const tituloEscaped = escapeHtml(modelo.titulo || 'Sin Título');
+      const descEscaped = escapeHtml(modelo.descripcion || '');
 
       card.innerHTML = `
-        <div class="model-thumb-container" title="Clic para ampliar">
-          <span class="model-badge-type ${badgeClass}">${escapeHtml(model.tipo || 'Documento')}</span>
-          ${isDefaultBadge}
-          <img src="${model.archivo_data || ''}" alt="${escapeHtml(model.nombre)}" loading="lazy">
-          <div class="model-thumb-overlay"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+        <div class="model-card-thumb-wrapper" title="Clic para ampliar imagen">
+          <img class="model-card-thumb" src="${modelo.imagen_data}" alt="${tituloEscaped}">
+          <div class="model-card-overlay-btn">
+            <span><i class="fa-solid fa-magnifying-glass-plus"></i> Ampliar</span>
+          </div>
         </div>
         <div class="model-card-body">
-          <div class="model-card-title" title="${escapeHtml(model.nombre)}">${escapeHtml(model.nombre)}</div>
-          <div class="model-card-desc">${escapeHtml(model.descripcion || 'Sin descripción adicional')}</div>
+          <div class="model-card-header">
+            <h4 class="model-card-title" title="${tituloEscaped}">${tituloEscaped}</h4>
+            <span class="model-badge ${typeSlug}">${escapeHtml(modelo.tipo || 'Documento')}</span>
+          </div>
+          ${descEscaped ? `<div class="model-card-desc" title="${descEscaped}">${descEscaped}</div>` : '<div class="model-card-desc" style="opacity: 0.4;">Sin descripción adicional</div>'}
           <div class="model-card-footer">
-            <span class="model-card-date"><i class="fa-regular fa-calendar"></i> ${formatModelDate(model.fecha_subida)}</span>
+            <span class="model-card-format"><i class="fa-solid fa-file-image"></i> ${formatoText}</span>
             <div class="model-card-actions">
-              <button class="model-action-btn star${model.es_predeterminado ? ' active' : ''}" title="${model.es_predeterminado ? 'Modelo predeterminado' : 'Marcar como predeterminado'}" data-action="default">
-                <i class="fa-solid fa-star"></i>
-              </button>
-              <button class="model-action-btn view" title="Ver en alta resolución" data-action="view">
+              <button type="button" class="model-card-btn view" title="Ver en Pantalla Completa" data-action="view">
                 <i class="fa-solid fa-eye"></i>
               </button>
-              <button class="model-action-btn delete" title="Eliminar modelo" data-action="delete">
+              <button type="button" class="model-card-btn download" title="Descargar Imagen" data-action="download">
+                <i class="fa-solid fa-download"></i>
+              </button>
+              <button type="button" class="model-card-btn delete" title="Eliminar Modelo" data-action="delete">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -4524,35 +4341,32 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Clic en la miniatura → Abrir lightbox
-      card.querySelector('.model-thumb-container').addEventListener('click', () => {
-        openLightbox(model);
-      });
+      // Clic en la miniatura o botón ver -> Lightbox
+      const thumbWrapper = card.querySelector('.model-card-thumb-wrapper');
+      thumbWrapper.addEventListener('click', () => openImageLightbox(modelo.imagen_data, modelo.titulo, modelo.formato));
 
-      // Botón Ver
       card.querySelector('[data-action="view"]').addEventListener('click', (e) => {
         e.stopPropagation();
-        openLightbox(model);
+        openImageLightbox(modelo.imagen_data, modelo.titulo, modelo.formato);
       });
 
-      // Botón Predeterminado
-      card.querySelector('[data-action="default"]').addEventListener('click', async (e) => {
+      // Descargar
+      card.querySelector('[data-action="download"]').addEventListener('click', (e) => {
         e.stopPropagation();
-        await window.api.setPredeterminadoModelo(model.id, model.tipo);
-        showToast(`Modelo marcado como predeterminado para ${model.tipo}`, 'success');
-        await loadAndRenderModels();
+        downloadImage(modelo.imagen_data, `${(modelo.titulo || 'modelo').replace(/[^a-zA-Z0-9_-]/g, '_')}.${(modelo.formato || 'png').toLowerCase()}`);
       });
 
-      // Botón Eliminar con confirmación
+      // Eliminar
       card.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm(`¿Deseas eliminar el modelo "${model.nombre}"?`)) {
-          const res = await window.api.deleteModeloDocumento(model.id);
+        const conf = confirm(`¿Estás seguro de eliminar el modelo "${modelo.titulo}"?`);
+        if (conf) {
+          const res = await window.api.deleteModeloDocumento(modelo.id);
           if (res && res.success) {
-            showToast('Modelo eliminado correctamente.', 'info');
+            showToast('Modelo eliminado correctamente', 'success');
             await loadAndRenderModels();
           } else {
-            showToast('Error al eliminar modelo.', 'error');
+            showToast('Error al eliminar modelo', 'error');
           }
         }
       });
@@ -4561,207 +4375,190 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── Lightbox / Visualizador en alta resolución ───────────────────────────────
-  function openLightbox(model) {
-    if (!lightboxModal) return;
-    lightboxImg.src = model.archivo_data || '';
-    lightboxTitle.textContent = model.nombre || 'Modelo';
-    lightboxBadge.textContent = model.tipo || 'Documento';
-    lightboxBadge.className = `model-badge-type ${getBadgeClass(model.tipo)}`;
-    lightboxBadge.style.position = 'static';
-    lightboxDesc.textContent = model.descripcion || '';
-    lightboxDate.textContent = `Subido el ${formatModelDate(model.fecha_subida)}`;
-    
-    lightboxDownload.href = model.archivo_data || '#';
-    lightboxDownload.download = `${(model.nombre || 'modelo').replace(/\s+/g, '_')}_${model.archivo_nombre || 'documento.png'}`;
+  // ── Lightbox Visor ─────────────────────────────────────────────────────────
 
+  function openImageLightbox(dataUrl, title, formato) {
+    if (!lightboxModal || !lightboxImg) return;
+    lightboxImg.src = dataUrl;
+    if (lightboxCaption) lightboxCaption.textContent = title || 'Modelo de Documento';
+    if (lightboxDownloadLink) {
+      lightboxDownloadLink.href = dataUrl;
+      const ext = (formato || 'png').toLowerCase();
+      lightboxDownloadLink.download = `${(title || 'modelo').replace(/[^a-zA-Z0-9_-]/g, '_')}.${ext}`;
+    }
     lightboxModal.style.display = 'flex';
   }
 
-  // ── Manejo de Archivos e Imágenes (Drag & Drop + File Input) ─────────────────
-  function handleFileSelection(file) {
+  function closeImageLightbox() {
+    if (lightboxModal) lightboxModal.style.display = 'none';
+  }
+
+  function downloadImage(dataUrl, filename) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ── Subir / Crear Modelo ───────────────────────────────────────────────────
+
+  function openUploadModelModal() {
+    if (!uploadModelModal) return;
+    if (uploadModelForm) uploadModelForm.reset();
+    if (modelEditId) modelEditId.value = '';
+    selectedImageData = '';
+    selectedImageFormat = '';
+    resetDropzoneUI();
+    uploadModelModal.style.display = 'flex';
+  }
+
+  function closeUploadModelModal() {
+    if (uploadModelModal) uploadModelModal.style.display = 'none';
+    selectedImageData = '';
+    selectedImageFormat = '';
+    resetDropzoneUI();
+  }
+
+  function resetDropzoneUI() {
+    if (modelDropzonePrompt) modelDropzonePrompt.style.display = 'block';
+    if (modelImagePreviewWrapper) modelImagePreviewWrapper.style.display = 'none';
+    if (modelImagePreview) modelImagePreview.src = '';
+    if (modelFileInput) modelFileInput.value = '';
+  }
+
+  function processSelectedFile(file) {
     if (!file) return;
+    const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
     const ext = file.name.split('.').pop().toLowerCase();
-    if (!VALID_EXTENSIONS.includes(ext) && !file.type.startsWith('image/')) {
-      showToast(`Formato no compatible (.${ext}). Usa JPG, JPEG, PNG, GIF, WebP o SVG.`, 'warning');
+
+    if (!validExtensions.includes(ext) && !file.type.startsWith('image/')) {
+      showToast('Formato no soportado. Usa JPG, JPEG, PNG, GIF, WebP o SVG.', 'warning');
       return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      showToast('La imagen excede el límite recomendado de 15MB.', 'warning');
-      return;
-    }
-
-    selectedFileName = file.name;
-    selectedFileType = file.type || `image/${ext}`;
-
+    selectedImageFormat = ext.toUpperCase();
     const reader = new FileReader();
     reader.onload = (e) => {
-      selectedFileBase64 = e.target.result;
-      if (previewImg) previewImg.src = selectedFileBase64;
-      if (previewBox) previewBox.style.display = 'block';
-      if (dropzonePrompt) dropzonePrompt.style.display = 'none';
-      if (fileInfoEl) fileInfoEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-
-      // Autocompletar nombre si está vacío
-      if (modelNameInput && !modelNameInput.value.trim()) {
-        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-        modelNameInput.value = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      selectedImageData = e.target.result;
+      if (modelImagePreview) modelImagePreview.src = selectedImageData;
+      if (modelDropzonePrompt) modelDropzonePrompt.style.display = 'none';
+      if (modelImagePreviewWrapper) modelImagePreviewWrapper.style.display = 'flex';
+      if (modelFileInfoBadge) {
+        const sizeKb = Math.round(file.size / 1024);
+        modelFileInfoBadge.textContent = `${selectedImageFormat} • ${sizeKb} KB`;
       }
     };
     reader.readAsDataURL(file);
   }
 
-  // ── Drag & Drop Listeners ───────────────────────────────────────────────────
-  if (modelDropzone) {
-    modelDropzone.addEventListener('click', () => {
-      if (modelFileInput) modelFileInput.click();
-    });
+  // ── Event Listeners ────────────────────────────────────────────────────────
 
-    modelDropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      modelDropzone.classList.add('dragover');
-    });
+  if (closeModelsModalBtn) closeModelsModalBtn.addEventListener('click', closeInvoiceModelsModal);
+  if (footerCloseModelsBtn) footerCloseModelsBtn.addEventListener('click', closeInvoiceModelsModal);
+  if (openUploadModelBtn) openUploadModelBtn.addEventListener('click', openUploadModelModal);
+  if (emptyUploadModelBtn) emptyUploadModelBtn.addEventListener('click', openUploadModelModal);
 
-    modelDropzone.addEventListener('dragleave', () => {
-      modelDropzone.classList.remove('dragover');
-    });
+  if (closeUploadModelModalBtn) closeUploadModelModalBtn.addEventListener('click', closeUploadModelModal);
+  if (cancelUploadModelBtn) cancelUploadModelBtn.addEventListener('click', closeUploadModelModal);
 
-    modelDropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      modelDropzone.classList.remove('dragover');
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        handleFileSelection(e.dataTransfer.files[0]);
-      }
+  if (closeLightboxBtn) closeLightboxBtn.addEventListener('click', closeImageLightbox);
+  if (lightboxModal) {
+    lightboxModal.addEventListener('click', (e) => {
+      if (e.target === lightboxModal) closeImageLightbox();
     });
   }
 
+  if (modelRemoveFileBtn) {
+    modelRemoveFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedImageData = '';
+      selectedImageFormat = '';
+      resetDropzoneUI();
+    });
+  }
+
+  // Drag & drop y File Input
   if (modelFileInput) {
     modelFileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length > 0) {
-        handleFileSelection(e.target.files[0]);
+      if (e.target.files && e.target.files[0]) {
+        processSelectedFile(e.target.files[0]);
       }
     });
   }
 
-  // ── Toggle / Mostrar / Ocultar Panel de Subida ──────────────────────────────
-  function showUploadPanel(isEdit = false, model = null) {
-    if (!uploadPanel) return;
-    uploadPanel.style.display = 'block';
-    uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    if (isEdit && model) {
-      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i> Editar Modelo';
-      if (modelEditId) modelEditId.value = model.id;
-      if (modelNameInput) modelNameInput.value = model.nombre || '';
-      if (modelTypeSelect) modelTypeSelect.value = model.tipo || 'Factura';
-      if (modelDescInput) modelDescInput.value = model.descripcion || '';
-      if (modelIsDefault) modelIsDefault.checked = !!model.es_predeterminado;
-      selectedFileBase64 = model.archivo_data || null;
-      selectedFileName = model.archivo_nombre || '';
-      selectedFileType = model.archivo_tipo || '';
-
-      if (selectedFileBase64 && previewImg) {
-        previewImg.src = selectedFileBase64;
-        if (previewBox) previewBox.style.display = 'block';
-        if (dropzonePrompt) dropzonePrompt.style.display = 'none';
-        if (fileInfoEl) fileInfoEl.textContent = model.archivo_nombre || 'Imagen actual';
-      }
-    } else {
-      if (modelFormTitle) modelFormTitle.innerHTML = '<i class="fa-solid fa-file-image" style="color: var(--primary);"></i> Subir Nueva Imagen de Modelo';
-      if (modelForm) modelForm.reset();
-      if (modelEditId) modelEditId.value = '';
-      selectedFileBase64 = null;
-      selectedFileName = '';
-      selectedFileType = '';
-      if (previewBox) previewBox.style.display = 'none';
-      if (dropzonePrompt) dropzonePrompt.style.display = 'block';
-      if (modelFileInput) modelFileInput.value = '';
-    }
-  }
-
-  function hideUploadPanel() {
-    if (uploadPanel) uploadPanel.style.display = 'none';
-    if (modelForm) modelForm.reset();
-    if (modelEditId) modelEditId.value = '';
-    selectedFileBase64 = null;
-    selectedFileName = '';
-    selectedFileType = '';
-    if (previewBox) previewBox.style.display = 'none';
-    if (dropzonePrompt) dropzonePrompt.style.display = 'block';
-  }
-
-  if (toggleUploadBtn) {
-    toggleUploadBtn.addEventListener('click', () => {
-      if (uploadPanel.style.display === 'none' || !uploadPanel.style.display) {
-        showUploadPanel(false);
-      } else {
-        hideUploadPanel();
+  if (modelDropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      modelDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modelDropzone.classList.add('drag-over');
+      });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      modelDropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        modelDropzone.classList.remove('drag-over');
+      });
+    });
+    modelDropzone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        processSelectedFile(e.dataTransfer.files[0]);
       }
     });
   }
 
-  if (closeUploadBtn) closeUploadBtn.addEventListener('click', hideUploadPanel);
-  if (cancelUploadBtn) cancelUploadBtn.addEventListener('click', hideUploadPanel);
-
-  // ── Guardar Modelo (Submit Form) ────────────────────────────────────────────
-  if (modelForm) {
-    modelForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const editId = modelEditId && modelEditId.value ? parseInt(modelEditId.value, 10) : null;
-
-      if (!editId && !selectedFileBase64) {
-        showToast('Por favor selecciona o arrastra una imagen de modelo (JPG, PNG, GIF, WebP o SVG).', 'warning');
-        return;
-      }
-
-      const nombre = modelNameInput ? modelNameInput.value.trim() : '';
-      const tipo = modelTypeSelect ? modelTypeSelect.value : 'Factura';
-      const descripcion = modelDescInput ? modelDescInput.value.trim() : '';
-      const esPredeterminado = modelIsDefault ? modelIsDefault.checked : false;
-
-      if (!nombre) {
-        showToast('El nombre del modelo es obligatorio.', 'warning');
-        return;
-      }
-
-      const payload = {
-        id: editId,
-        nombre,
-        tipo,
-        descripcion,
-        archivo_nombre: selectedFileName || 'modelo.png',
-        archivo_tipo: selectedFileType || 'image/png',
-        archivo_data: selectedFileBase64,
-        es_predeterminado: esPredeterminado
-      };
-
-      const res = await window.api.saveModeloDocumento(payload);
-      if (res && res.success) {
-        showToast(editId ? 'Modelo actualizado exitosamente.' : '¡Modelo de documento subido y guardado exitosamente!', 'success');
-        hideUploadPanel();
-        await loadAndRenderModels();
-      } else {
-        showToast('Error al guardar el modelo: ' + (res ? res.message : ''), 'error');
-      }
-    });
-  }
-
-  // ── Filtros por pestaña ─────────────────────────────────────────────────────
-  document.querySelectorAll('.models-tab-btn').forEach(btn => {
+  // Filtros de categoría
+  filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.models-tab-btn').forEach(b => b.classList.remove('active'));
+      filterBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      currentTab = btn.dataset.tab || 'Todos';
+      currentModelFilter = btn.dataset.filter;
       renderModelsGrid();
     });
   });
 
-  // ── Buscador en tiempo real ─────────────────────────────────────────────────
+  // Búsqueda en tiempo real
   if (modelsSearchInput) {
-    modelsSearchInput.addEventListener('input', () => {
-      renderModelsGrid();
+    modelsSearchInput.addEventListener('input', () => renderModelsGrid());
+  }
+
+  // Guardar formulario
+  if (uploadModelForm) {
+    uploadModelForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titulo = modelTitleInput ? modelTitleInput.value.trim() : '';
+      const tipo = modelTypeSelect ? modelTypeSelect.value : 'Factura';
+      const descripcion = modelDescInput ? modelDescInput.value.trim() : '';
+
+      if (!titulo) {
+        showToast('Ingresa un título para el modelo.', 'warning');
+        return;
+      }
+      if (!selectedImageData) {
+        showToast('Debes seleccionar o arrastrar una imagen válida.', 'warning');
+        return;
+      }
+
+      const payload = {
+        id: modelEditId && modelEditId.value ? parseInt(modelEditId.value, 10) : null,
+        titulo,
+        tipo,
+        descripcion,
+        imagen_data: selectedImageData,
+        formato: selectedImageFormat || 'IMG'
+      };
+
+      const res = await window.api.saveModeloDocumento(payload);
+      if (res && res.success) {
+        showToast('¡Modelo de documento guardado con éxito!', 'success');
+        closeUploadModelModal();
+        await loadAndRenderModels();
+      } else {
+        showToast(res && res.message ? res.message : 'Error al guardar modelo', 'error');
+      }
     });
   }
 
