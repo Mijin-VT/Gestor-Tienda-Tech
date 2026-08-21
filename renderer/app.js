@@ -4422,6 +4422,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let defaultColWidth = 55;
   let currentOpacity = 0.45;
 
+  let activeSelectedCell = null;
+  const fieldTagsContainer = document.getElementById('field-tags-container');
+  const selectedCellIndicator = document.getElementById('selected-cell-indicator');
+  const btnAutoMapFields = document.getElementById('btn-auto-map-fields');
+
   // Arrays de tamaños individuales para cada fila y cada columna
   let colWidths = {};
   let rowHeights = {};
@@ -4445,6 +4450,175 @@ document.addEventListener('DOMContentLoaded', () => {
       colIndex = (colIndex - temp - 1) / 26;
     }
     return letter;
+  }
+
+  // ── Context Menu (Clic Derecho en Cuadrícula) ──────────────────────────────
+  let contextMenu = document.getElementById('excel-grid-context-menu');
+  if (!contextMenu) {
+    contextMenu = document.createElement('div');
+    contextMenu.className = 'excel-context-menu';
+    contextMenu.id = 'excel-grid-context-menu';
+    document.body.appendChild(contextMenu);
+  }
+
+  function hideContextMenu() {
+    if (contextMenu) contextMenu.style.display = 'none';
+  }
+  document.addEventListener('click', hideContextMenu);
+  document.addEventListener('contextmenu', (e) => {
+    if (!e.target.closest('#excel-grid-overlay') && !e.target.closest('#excel-grid-context-menu')) {
+      hideContextMenu();
+    }
+  });
+
+  function showContextMenu(x, y, items) {
+    if (!contextMenu) return;
+    contextMenu.innerHTML = '';
+    items.forEach(item => {
+      if (item.separator) {
+        const sep = document.createElement('div');
+        sep.className = 'excel-context-separator';
+        contextMenu.appendChild(sep);
+      } else {
+        const el = document.createElement('div');
+        el.className = `excel-context-item${item.danger ? ' danger' : ''}`;
+        el.innerHTML = `<i class="${item.icon}"></i> <span>${item.label}</span>`;
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          hideContextMenu();
+          if (item.action) item.action();
+        });
+        contextMenu.appendChild(el);
+      }
+    });
+
+    contextMenu.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
+    contextMenu.style.top = `${Math.min(y, window.innerHeight - 250)}px`;
+    contextMenu.style.display = 'block';
+  }
+
+  // ── Funciones de Inserción y Eliminación de Filas y Columnas ────────────────
+  function insertColumnAt(colIndex) {
+    gridColsCount++;
+    const newColWidths = {};
+    const newCellContents = {};
+
+    for (let c = 1; c < colIndex; c++) {
+      newColWidths[c] = colWidths[c] || defaultColWidth;
+    }
+    newColWidths[colIndex] = defaultColWidth;
+    for (let c = colIndex; c < gridColsCount; c++) {
+      newColWidths[c + 1] = colWidths[c] || defaultColWidth;
+    }
+    colWidths = newColWidths;
+
+    for (const key in cellContents) {
+      const [rStr, cStr] = key.split('_');
+      const r = parseInt(rStr, 10);
+      const c = parseInt(cStr, 10);
+      if (c < colIndex) {
+        newCellContents[`${r}_${c}`] = cellContents[key];
+      } else {
+        newCellContents[`${r}_${c + 1}`] = cellContents[key];
+      }
+    }
+    cellContents = newCellContents;
+    buildExcelGridOverlay();
+    showToast(`Columna ${getColumnLetter(colIndex)} insertada.`, 'info');
+  }
+
+  function deleteColumnAt(colIndex) {
+    if (gridColsCount <= 1) {
+      showToast('No puedes eliminar la última columna.', 'warning');
+      return;
+    }
+    const letter = getColumnLetter(colIndex);
+    const newColWidths = {};
+    const newCellContents = {};
+
+    for (let c = 1; c < colIndex; c++) {
+      newColWidths[c] = colWidths[c] || defaultColWidth;
+    }
+    for (let c = colIndex + 1; c <= gridColsCount; c++) {
+      newColWidths[c - 1] = colWidths[c] || defaultColWidth;
+    }
+    colWidths = newColWidths;
+
+    for (const key in cellContents) {
+      const [rStr, cStr] = key.split('_');
+      const r = parseInt(rStr, 10);
+      const c = parseInt(cStr, 10);
+      if (c < colIndex) {
+        newCellContents[`${r}_${c}`] = cellContents[key];
+      } else if (c > colIndex) {
+        newCellContents[`${r}_${c - 1}`] = cellContents[key];
+      }
+    }
+    cellContents = newCellContents;
+    gridColsCount--;
+    buildExcelGridOverlay();
+    showToast(`Columna ${letter} eliminada.`, 'info');
+  }
+
+  function insertRowAt(rowIndex) {
+    gridRowsCount++;
+    const newRowHeights = {};
+    const newCellContents = {};
+
+    for (let r = 1; r < rowIndex; r++) {
+      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
+    }
+    newRowHeights[rowIndex] = defaultRowHeight;
+    for (let r = rowIndex; r < gridRowsCount; r++) {
+      newRowHeights[r + 1] = rowHeights[r] || defaultRowHeight;
+    }
+    rowHeights = newRowHeights;
+
+    for (const key in cellContents) {
+      const [rStr, cStr] = key.split('_');
+      const r = parseInt(rStr, 10);
+      const c = parseInt(cStr, 10);
+      if (r < rowIndex) {
+        newCellContents[`${r}_${c}`] = cellContents[key];
+      } else {
+        newCellContents[`${r + 1}_${c}`] = cellContents[key];
+      }
+    }
+    cellContents = newCellContents;
+    buildExcelGridOverlay();
+    showToast(`Fila ${rowIndex} insertada.`, 'info');
+  }
+
+  function deleteRowAt(rowIndex) {
+    if (gridRowsCount <= 1) {
+      showToast('No puedes eliminar la última fila.', 'warning');
+      return;
+    }
+    const newRowHeights = {};
+    const newCellContents = {};
+
+    for (let r = 1; r < rowIndex; r++) {
+      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
+    }
+    for (let r = rowIndex + 1; r <= gridRowsCount; r++) {
+      newRowHeights[r - 1] = rowHeights[r] || defaultRowHeight;
+    }
+    rowHeights = newRowHeights;
+
+    for (const key in cellContents) {
+      const [rStr, cStr] = key.split('_');
+      const r = parseInt(rStr, 10);
+      const c = parseInt(cStr, 10);
+      if (r < rowIndex) {
+        newCellContents[`${r}_${c}`] = cellContents[key];
+      } else if (r > rowIndex) {
+        newCellContents[`${r - 1}_${c}`] = cellContents[key];
+      }
+    }
+    cellContents = newCellContents;
+    gridRowsCount--;
+    buildExcelGridOverlay();
+    showToast(`Fila ${rowIndex} eliminada.`, 'info');
   }
 
   // ── Generar Cuadrícula Excel Interactiva con Arrastre de Filas y Columnas ───
@@ -4491,7 +4665,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const newWidth = Math.max(20, startWidth + deltaX);
           colWidths[c] = newWidth;
 
-          // Actualizar en tiempo real las celdas de esta columna
           colHeader.style.width = `${newWidth}px`;
           colHeader.style.minWidth = `${newWidth}px`;
           colHeader.style.maxWidth = `${newWidth}px`;
@@ -4686,210 +4859,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       excelGridOverlay.appendChild(row);
     }
-  }
-
-  // ── Context Menu (Clic Derecho en Cuadrícula) ──────────────────────────────
-  let contextTarget = { type: null, index: null, r: null, c: null };
-  const contextMenu = document.createElement('div');
-  contextMenu.className = 'excel-context-menu';
-  contextMenu.id = 'excel-grid-context-menu';
-  document.body.appendChild(contextMenu);
-
-  function hideContextMenu() {
-    contextMenu.style.display = 'none';
-  }
-  document.addEventListener('click', hideContextMenu);
-  document.addEventListener('contextmenu', (e) => {
-    if (!e.target.closest('#excel-grid-overlay') && !e.target.closest('#excel-grid-context-menu')) {
-      hideContextMenu();
-    }
-  });
-
-  function showContextMenu(x, y, items) {
-    contextMenu.innerHTML = '';
-    items.forEach(item => {
-      if (item.separator) {
-        const sep = document.createElement('div');
-        sep.className = 'excel-context-separator';
-        contextMenu.appendChild(sep);
-      } else {
-        const el = document.createElement('div');
-        el.className = `excel-context-item${item.danger ? ' danger' : ''}`;
-        el.innerHTML = `<i class="${item.icon}"></i> <span>${item.label}</span>`;
-        el.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          hideContextMenu();
-          if (item.action) item.action();
-        });
-        contextMenu.appendChild(el);
-      }
-    });
-
-    contextMenu.style.left = `${Math.min(x, window.innerWidth - 200)}px`;
-    contextMenu.style.top = `${Math.min(y, window.innerHeight - 250)}px`;
-    contextMenu.style.display = 'block';
-  }
-
-  // ── Funciones de Inserción y Eliminación de Filas y Columnas ────────────────
-  function insertColumnAt(colIndex) {
-    gridColsCount++;
-    const newColWidths = {};
-    const newCellContents = {};
-
-    // Reubicar anchos
-    for (let c = 1; c < colIndex; c++) {
-      newColWidths[c] = colWidths[c] || defaultColWidth;
-    }
-    newColWidths[colIndex] = defaultColWidth;
-    for (let c = colIndex; c < gridColsCount; c++) {
-      newColWidths[c + 1] = colWidths[c] || defaultColWidth;
-    }
-    colWidths = newColWidths;
-
-    // Reubicar contenidos de celdas
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (c < colIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else {
-        newCellContents[`${r}_${c + 1}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    buildExcelGridOverlay();
-    showToast(`Columna ${getColumnLetter(colIndex)} insertada.`, 'info');
-  }
-
-  function deleteColumnAt(colIndex) {
-    if (gridColsCount <= 1) {
-      showToast('No puedes eliminar la última columna.', 'warning');
-      return;
-    }
-    const letter = getColumnLetter(colIndex);
-    const newColWidths = {};
-    const newCellContents = {};
-
-    for (let c = 1; c < colIndex; c++) {
-      newColWidths[c] = colWidths[c] || defaultColWidth;
-    }
-    for (let c = colIndex + 1; c <= gridColsCount; c++) {
-      newColWidths[c - 1] = colWidths[c] || defaultColWidth;
-    }
-    colWidths = newColWidths;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (c < colIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else if (c > colIndex) {
-        newCellContents[`${r}_${c - 1}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    gridColsCount--;
-    buildExcelGridOverlay();
-    showToast(`Columna ${letter} eliminada.`, 'info');
-  }
-
-  function insertRowAt(rowIndex) {
-    gridRowsCount++;
-    const newRowHeights = {};
-    const newCellContents = {};
-
-    // Reubicar alturas
-    for (let r = 1; r < rowIndex; r++) {
-      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
-    }
-    newRowHeights[rowIndex] = defaultRowHeight;
-    for (let r = rowIndex; r < gridRowsCount; r++) {
-      newRowHeights[r + 1] = rowHeights[r] || defaultRowHeight;
-    }
-    rowHeights = newRowHeights;
-
-    // Reubicar contenidos de celdas
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (r < rowIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else {
-        newCellContents[`${r + 1}_${c}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    buildExcelGridOverlay();
-    showToast(`Fila ${rowIndex} insertada.`, 'info');
-  }
-
-  function deleteRowAt(rowIndex) {
-    if (gridRowsCount <= 1) {
-      showToast('No puedes eliminar la última fila.', 'warning');
-      return;
-    }
-    const newRowHeights = {};
-    const newCellContents = {};
-
-    for (let r = 1; r < rowIndex; r++) {
-      newRowHeights[r] = rowHeights[r] || defaultRowHeight;
-    }
-    for (let r = rowIndex + 1; r <= gridRowsCount; r++) {
-      newRowHeights[r - 1] = rowHeights[r] || defaultRowHeight;
-    }
-    rowHeights = newRowHeights;
-
-    for (const key in cellContents) {
-      const [rStr, cStr] = key.split('_');
-      const r = parseInt(rStr, 10);
-      const c = parseInt(cStr, 10);
-      if (r < rowIndex) {
-        newCellContents[`${r}_${c}`] = cellContents[key];
-      } else if (r > rowIndex) {
-        newCellContents[`${r - 1}_${c}`] = cellContents[key];
-      }
-    }
-    cellContents = newCellContents;
-    gridRowsCount--;
-    buildExcelGridOverlay();
-    showToast(`Fila ${rowIndex} eliminada.`, 'info');
-  }
-
-  // ── Botones de Barra Superior para Insertar / Eliminar ───────────────────────
-  const btnAddColLeft = document.getElementById('btn-add-col-left');
-  const btnDelCol     = document.getElementById('btn-del-col');
-  const btnAddRowAbove = document.getElementById('btn-add-row-above');
-  const btnDelRow     = document.getElementById('btn-del-row');
-
-  if (btnAddColLeft) {
-    btnAddColLeft.addEventListener('click', () => {
-      const col = activeSelectedCell ? activeSelectedCell.col : gridColsCount + 1;
-      insertColumnAt(col);
-    });
-  }
-
-  if (btnDelCol) {
-    btnDelCol.addEventListener('click', () => {
-      const col = activeSelectedCell ? activeSelectedCell.col : gridColsCount;
-      deleteColumnAt(col);
-    });
-  }
-
-  if (btnAddRowAbove) {
-    btnAddRowAbove.addEventListener('click', () => {
-      const row = activeSelectedCell ? activeSelectedCell.row : gridRowsCount + 1;
-      insertRowAt(row);
-    });
-  }
-
-  if (btnDelRow) {
-    btnDelRow.addEventListener('click', () => {
-      const row = activeSelectedCell ? activeSelectedCell.row : gridRowsCount;
-      deleteRowAt(row);
-    });
   }
 
   // ── Auto-Calibración Inteligente según la plantilla física de iZASKUN ───────
@@ -5108,10 +5077,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── Toggle / Mostrar / Ocultar Panel de Subida ──────────────────────────────
   function showUploadPanel(isEdit = false, model = null) {
     if (!uploadPanel) return;
     uploadPanel.style.display = 'block';
+    if (toggleUploadBtn) {
+      toggleUploadBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i> <span>Ocultar Panel</span>';
+    }
     uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (isEdit && model) {
@@ -5174,6 +5145,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideUploadPanel() {
     if (uploadPanel) uploadPanel.style.display = 'none';
+    if (toggleUploadBtn) {
+      toggleUploadBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Subir Modelo</span>';
+    }
     if (modelForm) modelForm.reset();
     if (modelEditId) modelEditId.value = '';
     selectedFileBase64 = null;
@@ -5185,8 +5159,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (toggleUploadBtn) {
-    toggleUploadBtn.addEventListener('click', () => {
-      if (uploadPanel.style.display === 'none' || !uploadPanel.style.display) {
+    toggleUploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isHidden = !uploadPanel.style.display || uploadPanel.style.display === 'none';
+      if (isHidden) {
         showUploadPanel(false);
       } else {
         hideUploadPanel();
