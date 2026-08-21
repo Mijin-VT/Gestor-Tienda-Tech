@@ -6,3 +6,6 @@ build/
 .DS_Store
 temp_auth/
 console_output.txt
+__pycache__/
+*.pyc
+*.pyo
