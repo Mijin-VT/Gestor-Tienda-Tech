@@ -1754,9 +1754,27 @@ body {
   font-weight: 700;
   text-align: center;
   vertical-align: middle;
-  height: 22px;
+  height: 24px;
   user-select: none;
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.excel-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 25;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.excel-col-resizer:hover,
+.excel-col-resizer.resizing {
+  background: #2563eb;
 }
 
 .excel-header-row {
@@ -1769,19 +1787,37 @@ body {
   font-weight: 700;
   text-align: center;
   vertical-align: middle;
-  width: 32px;
-  min-width: 32px;
+  width: 34px;
+  min-width: 34px;
   user-select: none;
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.excel-row-resizer {
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  cursor: row-resize;
+  z-index: 25;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.excel-row-resizer:hover,
+.excel-row-resizer.resizing {
+  background: #2563eb;
 }
 
 .excel-header-corner {
   display: table-cell;
   background: #e2e8f0;
   border: 1px solid #cbd5e1;
-  width: 32px;
-  min-width: 32px;
-  height: 22px;
+  width: 34px;
+  min-width: 34px;
+  height: 24px;
 }
 
 .excel-cell {

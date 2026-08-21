@@ -4409,9 +4409,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let gridRowsCount = 35;
   let gridColsCount = 18; // A to R
-  let currentRowHeight = 26;
-  let currentColWidth = 55;
+  let defaultRowHeight = 26;
+  let defaultColWidth = 55;
   let currentOpacity = 0.45;
+
+  // Arrays de tamaños individuales para cada fila y cada columna
+  let colWidths = {};
+  let rowHeights = {};
+  let cellContents = {}; // Guardar contenido escrito en celdas si se redibuja
+
+  function initGridDimensions() {
+    for (let c = 1; c <= gridColsCount; c++) {
+      if (!colWidths[c]) colWidths[c] = defaultColWidth;
+    }
+    for (let r = 1; r <= gridRowsCount; r++) {
+      if (!rowHeights[r]) rowHeights[r] = defaultRowHeight;
+    }
+  }
+  initGridDimensions();
 
   function getColumnLetter(colIndex) {
     let temp, letter = '';
@@ -4423,7 +4438,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return letter;
   }
 
-  // ── Generar Cuadrícula Excel Interactiva ────────────────────────────────────
+  // ── Generar Cuadrícula Excel Interactiva con Arrastre de Filas y Columnas ───
   function buildExcelGridOverlay() {
     if (!excelGridOverlay) return;
     excelGridOverlay.innerHTML = '';
@@ -4440,9 +4455,55 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let c = 1; c <= gridColsCount; c++) {
       const colHeader = document.createElement('div');
       colHeader.className = 'excel-header-col';
-      colHeader.textContent = getColumnLetter(c);
-      colHeader.style.width = `${currentColWidth}px`;
-      colHeader.style.minWidth = `${currentColWidth}px`;
+      colHeader.dataset.colIndex = c;
+      const w = colWidths[c] || defaultColWidth;
+      colHeader.style.width = `${w}px`;
+      colHeader.style.minWidth = `${w}px`;
+      colHeader.style.maxWidth = `${w}px`;
+
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = getColumnLetter(c);
+      colHeader.appendChild(titleSpan);
+
+      // Resizer para arrastrar y cambiar ancho de columna
+      const resizer = document.createElement('div');
+      resizer.className = 'excel-col-resizer';
+      resizer.title = `Arrastra para redimensionar columna ${getColumnLetter(c)}`;
+
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizer.classList.add('resizing');
+        const startX = e.pageX;
+        const startWidth = colWidths[c] || defaultColWidth;
+
+        const onMouseMove = (moveEv) => {
+          const deltaX = moveEv.pageX - startX;
+          const newWidth = Math.max(20, startWidth + deltaX);
+          colWidths[c] = newWidth;
+
+          // Actualizar en tiempo real las celdas de esta columna
+          colHeader.style.width = `${newWidth}px`;
+          colHeader.style.minWidth = `${newWidth}px`;
+          colHeader.style.maxWidth = `${newWidth}px`;
+          document.querySelectorAll(`.excel-cell[data-col-index="${c}"]`).forEach(cell => {
+            cell.style.width = `${newWidth}px`;
+            cell.style.minWidth = `${newWidth}px`;
+            cell.style.maxWidth = `${newWidth}px`;
+          });
+        };
+
+        const onMouseUp = () => {
+          resizer.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      colHeader.appendChild(resizer);
       headerRow.appendChild(colHeader);
     }
     excelGridOverlay.appendChild(headerRow);
@@ -4451,26 +4512,81 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let r = 1; r <= gridRowsCount; r++) {
       const row = document.createElement('div');
       row.className = 'excel-row';
+      row.dataset.rowIndex = r;
+      const h = rowHeights[r] || defaultRowHeight;
 
-      // Cabecera de fila (1, 2, 3...)
+      // Cabecera de fila con número (1, 2, 3...)
       const rowHeader = document.createElement('div');
       rowHeader.className = 'excel-header-row';
-      rowHeader.textContent = r;
-      rowHeader.style.height = `${currentRowHeight}px`;
-      rowHeader.style.lineHeight = `${currentRowHeight}px`;
+      rowHeader.dataset.rowIndex = r;
+      rowHeader.style.height = `${h}px`;
+      rowHeader.style.lineHeight = `${h}px`;
+
+      const numSpan = document.createElement('span');
+      numSpan.textContent = r;
+      rowHeader.appendChild(numSpan);
+
+      // Resizer para arrastrar y cambiar altura de fila
+      const rowResizer = document.createElement('div');
+      rowResizer.className = 'excel-row-resizer';
+      rowResizer.title = `Arrastra para redimensionar fila ${r}`;
+
+      rowResizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rowResizer.classList.add('resizing');
+        const startY = e.pageY;
+        const startHeight = rowHeights[r] || defaultRowHeight;
+
+        const onMouseMove = (moveEv) => {
+          const deltaY = moveEv.pageY - startY;
+          const newHeight = Math.max(16, startHeight + deltaY);
+          rowHeights[r] = newHeight;
+
+          // Actualizar en tiempo real la altura de esta fila
+          rowHeader.style.height = `${newHeight}px`;
+          rowHeader.style.lineHeight = `${newHeight}px`;
+          document.querySelectorAll(`.excel-cell[data-row="${r}"]`).forEach(cell => {
+            cell.style.height = `${newHeight}px`;
+          });
+        };
+
+        const onMouseUp = () => {
+          rowResizer.classList.remove('resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      rowHeader.appendChild(rowResizer);
       row.appendChild(rowHeader);
 
-      // Celdas editables
+      // Celdas editables de la fila
       for (let c = 1; c <= gridColsCount; c++) {
         const cell = document.createElement('div');
         cell.className = 'excel-cell';
         cell.dataset.row = r;
         cell.dataset.col = getColumnLetter(c);
-        cell.style.width = `${currentColWidth}px`;
-        cell.style.minWidth = `${currentColWidth}px`;
-        cell.style.height = `${currentRowHeight}px`;
+        cell.dataset.colIndex = c;
+        const cw = colWidths[c] || defaultColWidth;
+        cell.style.width = `${cw}px`;
+        cell.style.minWidth = `${cw}px`;
+        cell.style.maxWidth = `${cw}px`;
+        cell.style.height = `${h}px`;
         cell.contentEditable = 'true';
         cell.spellcheck = false;
+
+        const cellKey = `${r}_${c}`;
+        if (cellContents[cellKey]) {
+          cell.textContent = cellContents[cellKey];
+        }
+
+        cell.addEventListener('input', () => {
+          cellContents[cellKey] = cell.textContent;
+        });
 
         cell.addEventListener('focus', () => {
           cell.classList.add('selected');
@@ -4496,25 +4612,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (rowHeightSlider) {
     rowHeightSlider.addEventListener('input', (e) => {
-      currentRowHeight = parseInt(e.target.value, 10);
-      if (rowHeightVal) rowHeightVal.textContent = `${currentRowHeight}px`;
+      defaultRowHeight = parseInt(e.target.value, 10);
+      if (rowHeightVal) rowHeightVal.textContent = `${defaultRowHeight}px`;
+      for (let r = 1; r <= gridRowsCount; r++) {
+        rowHeights[r] = defaultRowHeight;
+      }
       buildExcelGridOverlay();
     });
   }
 
   if (colWidthSlider) {
     colWidthSlider.addEventListener('input', (e) => {
-      currentColWidth = parseInt(e.target.value, 10);
-      if (colWidthVal) colWidthVal.textContent = `${currentColWidth}px`;
+      defaultColWidth = parseInt(e.target.value, 10);
+      if (colWidthVal) colWidthVal.textContent = `${defaultColWidth}px`;
+      for (let c = 1; c <= gridColsCount; c++) {
+        colWidths[c] = defaultColWidth;
+      }
       buildExcelGridOverlay();
     });
   }
 
   if (btnResetGrid) {
     btnResetGrid.addEventListener('click', () => {
-      currentRowHeight = 26;
-      currentColWidth = 55;
+      defaultRowHeight = 26;
+      defaultColWidth = 55;
       currentOpacity = 0.45;
+      colWidths = {};
+      rowHeights = {};
+      cellContents = {};
+      initGridDimensions();
       if (rowHeightSlider) rowHeightSlider.value = 26;
       if (rowHeightVal) rowHeightVal.textContent = '26px';
       if (colWidthSlider) colWidthSlider.value = 55;
