@@ -1893,6 +1893,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </td>
             <td style="text-align: right;">
               <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                <button class="action-btn" onclick="previewInvoiceWithVision(${f.id})" title="Ver Factura con Modelo (OpenCV + Pillow)" style="color: #a78bfa; border-color: rgba(167, 139, 250, 0.4); background: rgba(167, 139, 250, 0.12);"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
                 <button class="action-btn action-view" onclick="previewInvoice(${f.id})" title="Ver / Imprimir en Impresora o PDF"><i class="fa-solid fa-print"></i></button>
                 <button class="action-btn action-email" onclick="sendInvoiceEmail(${f.id})" title="Enviar Factura por Email" style="color: #10b981; border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05);"><i class="fa-solid fa-envelope"></i></button>
                 <button class="action-btn action-delete" onclick="deleteInvoice(${f.id})" title="Eliminar Factura"><i class="fa-solid fa-trash-can"></i></button>
@@ -1907,6 +1908,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   window.renderInvoices = renderInvoices;
+
+  window.previewInvoiceWithVision = function(id) {
+    window.previewInvoice(id);
+    setTimeout(() => {
+      const btnVision = document.getElementById('btn-view-mode-vision');
+      if (btnVision) btnVision.click();
+    }, 150);
+  };
 
   window.deleteInvoice = function(id) {
     showConfirm('¿Eliminar Factura?', 'Esta acción eliminará la factura y todos sus detalles de la base de datos de manera irreversible.', async () => {
@@ -2346,6 +2355,24 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
           showToast('Error al cargar órdenes de reparación.', 'error');
         }
+      }
+
+      // Cargar modelos de comprobante en checkout
+      const checkoutModelSelect = document.getElementById('invoice-model-select-checkout');
+      if (checkoutModelSelect) {
+        checkoutModelSelect.innerHTML = '<option value="">Plantilla Estándar Oficial</option>';
+        try {
+          const modRes = await window.api.getModelosDocumentos();
+          if (modRes && modRes.success && modRes.recordset) {
+            modRes.recordset.forEach(m => {
+              const opt = document.createElement('option');
+              opt.value = m.id;
+              opt.textContent = `${m.nombre} (${m.tipo})${m.es_predeterminado ? ' ★' : ''}`;
+              if (m.es_predeterminado) opt.selected = true;
+              checkoutModelSelect.appendChild(opt);
+            });
+          }
+        } catch(e) {}
       }
       
       if (window.updateInvoiceCartUI) window.updateInvoiceCartUI();

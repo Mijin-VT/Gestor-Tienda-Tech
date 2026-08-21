@@ -120,6 +120,13 @@
           </a>
         </li>
         
+        <!-- 8.1 Modelos de Factura -->
+        <li class="menu-item admin-only" onclick="openInvoiceModelsModal()" style="cursor: pointer;">
+          <a class="menu-link" style="color: #60a5fa;">
+            <i class="fa-solid fa-layer-group"></i> Modelos de Factura
+          </a>
+        </li>
+        
         <!-- 9. Pedidos -->
         <li class="menu-item" data-target="orders-view">
           <a class="menu-link">
@@ -620,8 +627,8 @@
             <div class="card-header-main">
               <span class="card-title-main"><i class="fa-solid fa-calculator"></i> Facturación y Caja</span>
               <div style="display: flex; gap: 10px; align-items: center;">
-                <button id="invoice-models-btn" class="btn-secondary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
-                  <i class="fa-solid fa-layer-group"></i> Modelos
+                <button id="invoice-models-btn" class="btn-primary" onclick="openInvoiceModelsModal()" style="width: auto; padding: 10px 20px; font-size: 0.88rem; background: linear-gradient(135deg, #3b82f6, #6366f1); border: none; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">
+                  <i class="fa-solid fa-layer-group"></i> Modelos / Plantillas
                 </button>
                 <button id="add-invoice-btn" class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.88rem;">
                   <i class="fa-solid fa-cart-shopping"></i> Nueva Factura / Venta
@@ -1803,6 +1810,13 @@
             <span style="font-weight: 700;">Total a Pagar:</span>
             <span id="invoice-calc-total" style="font-weight: 700; color: var(--success); font-size: 1.1rem;">$0 USD</span>
           </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="invoice-model-select-checkout" class="form-label"><i class="fa-solid fa-layer-group" style="color: var(--primary);"></i> Modelo / Plantilla de Impresión</label>
+          <select id="invoice-model-select-checkout" class="form-input" style="background-color: var(--bg-primary);">
+            <option value="">Plantilla Estándar Oficial</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-bottom: 20px;">
